@@ -21,3 +21,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "mind-game"
 include(":app")
+include(":core:logic")
+include(":core:ui")
+include(":feature:game")
