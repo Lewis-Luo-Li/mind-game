@@ -15,7 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.idroid.stuido.mind_game.feature.game.R
 
 /** 暂停覆盖层。 */
 @Composable
@@ -27,10 +29,10 @@ fun PauseScrim(onResume: () -> Unit, onExit: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         CenteredCard {
-            Text("已暂停", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.pause_title), style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(16.dp))
-            Button(onClick = onResume) { Text("继续") }
-            TextButton(onClick = onExit) { Text("退出") }
+            Button(onClick = onResume) { Text(stringResource(R.string.action_resume)) }
+            TextButton(onClick = onExit) { Text(stringResource(R.string.action_exit)) }
         }
     }
 }
@@ -56,14 +58,15 @@ fun FinishPanel(
     ) {
         CenteredCard {
             Text(
-                text = if (victory) "🎉 已完成" else "❌ 挑战失败",
+                text = if (victory) stringResource(R.string.finish_victory)
+                else stringResource(R.string.finish_failed),
                 style = MaterialTheme.typography.headlineSmall,
             )
             Spacer(Modifier.height(8.dp))
-            Text("用时 ${timerSeconds}s · 错误 $mistakes")
+            Text(stringResource(R.string.finish_meta, timerSeconds, mistakes))
             Spacer(Modifier.height(16.dp))
-            Button(onClick = onRetry) { Text("再来一局") }
-            TextButton(onClick = onExit) { Text("退出") }
+            Button(onClick = onRetry) { Text(stringResource(R.string.finish_play_again)) }
+            TextButton(onClick = onExit) { Text(stringResource(R.string.action_exit)) }
         }
     }
 }

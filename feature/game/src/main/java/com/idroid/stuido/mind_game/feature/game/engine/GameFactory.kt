@@ -37,10 +37,10 @@ class GameFactory(
         seed: Long? = null,
     ): GameSeed {
         val holes = difficultyConfig.holeCount(spec, difficulty)
-            ?: throw IllegalArgumentException("$spec 不支持难度 $difficulty")
+            ?: throw IllegalArgumentException("$spec does not support difficulty $difficulty")
 
         val effectiveSeed = when (mode) {
-            GameMode.DAILY -> seed ?: throw IllegalArgumentException("每日挑战必须提供今日种子 seed")
+            GameMode.DAILY -> seed ?: throw IllegalArgumentException("Daily challenge requires today's seed")
             GameMode.FREE -> seed // 自由模式可带或不带种子（带则一致性，不带则随机）
         }
 

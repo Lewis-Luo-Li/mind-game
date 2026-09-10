@@ -41,6 +41,11 @@ android {
 
 dependencies {
     implementation(project(":feature:game"))
+    // feature:game 的公开 API（GameScreenRoute 等）参数使用了 core:logic 的类型
+    // （BoardSpec / Difficulty），因此 app 需直接依赖之以便构造开局参数。
+    implementation(project(":core:logic"))
+    // 全局主题（Color/Typography/MindgameTheme）统一托管在 core:ui，app 顶层直接使用。
+    implementation(project(":core:ui"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
