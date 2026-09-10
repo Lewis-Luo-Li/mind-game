@@ -1,0 +1,31 @@
+<resources>
+    <!-- ===== 对局通用动作 ===== -->
+    <string name="action_exit">Exit</string>
+    <string name="action_resume">Resume</string>
+    <string name="action_pause">Pause</string>
+
+    <!-- ===== GameScreen（未开局 / 生成中） ===== -->
+    <string name="game_idle_welcome">Welcome to Sudoku. Choose a mode and a board size above to begin.</string>
+    <string name="game_busy_generating">Generating puzzle…</string>
+    <string name="game_not_started">Sudoku</string>
+    <string name="label_daily">Daily</string>
+
+    <!-- ===== 顶部信息条 ===== -->
+    <string name="game_topbar_time">⏱ %1$02d:%2$02d</string>
+    <string name="game_topbar_mistakes">⚠ %1$d/%2$d</string>
+
+    <!-- ===== 工具行按钮 ===== -->
+    <string name="tool_notes">Notes</string>
+    <string name="tool_notes_active">Notes ✓</string>
+    <string name="tool_erase">Erase</string>
+    <string name="tool_hint">Hint</string>
+    <string name="tool_check">Check</string>
+    <string name="tool_solve">Solve</string>
+
+    <!-- ===== 暂停 / 完成浮层 ===== -->
+    <string name="pause_title">Paused</string>
+    <string name="finish_victory">🎉 Solved!</string>
+    <string name="finish_failed">❌ Challenge failed</string>
+    <string name="finish_meta">Time %1$d s · Mistakes %2$d</string>
+    <string name="finish_play_again">Play Again</string>
+</resources>

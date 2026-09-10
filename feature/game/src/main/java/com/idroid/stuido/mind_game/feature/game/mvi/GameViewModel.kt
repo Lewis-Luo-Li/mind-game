@@ -94,11 +94,11 @@ class GameViewModel(
                     gameFactory.newGame(mode, spec, difficulty, seed)
                 }
             } catch (e: IllegalArgumentException) {
-                val reason = e.message ?: "该规格/难度组合不可用"
+                val reason = e.message ?: "This board size/difficulty combination is unavailable."
                 _effect.send(GameEffect.NewGameFailed(reason))
                 null
             } catch (e: Exception) {
-                _effect.send(GameEffect.NewGameFailed(e.message ?: "生成失败"))
+                _effect.send(GameEffect.NewGameFailed(e.message ?: "Failed to generate the puzzle."))
                 null
             }
 
@@ -152,7 +152,7 @@ class GameViewModel(
         val state = _uiState.value
         val exceeds = state.progress.mistakes + 1 >= state.config.maxMistakes
         _uiState.update { GameReducer.incrementMistakes(it) }
-        _effect.trySend(GameEffect.ShowMessage("❌ 与终盘不一致(+1)"))
+        _effect.trySend(GameEffect.ShowMessage("❌ Doesn't match the solution (+1)"))
         if (exceeds) {
             _uiState.update { GameReducer.fail(it) }
             _effect.trySend(GameEffect.GameOver)
@@ -183,8 +183,8 @@ class GameViewModel(
         _uiState.update { GameReducer.setConflicts(it, wrong) }
         _effect.trySend(
             GameEffect.ShowMessage(
-                if (wrong.isEmpty()) "✅ 当前已填数字全部正确"
-                else "⚠️ 有 ${wrong.size} 处与终盘不一致"
+                if (wrong.isEmpty()) "✅ All entered digits match the solution"
+                else "⚠️ ${wrong.size} cell(s) don't match the solution"
             )
         )
     }

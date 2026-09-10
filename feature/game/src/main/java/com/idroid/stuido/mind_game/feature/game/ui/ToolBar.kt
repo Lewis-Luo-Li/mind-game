@@ -11,9 +11,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.idroid.stuido.mind_game.feature.game.GameStatus
+import com.idroid.stuido.mind_game.feature.game.R
 import com.idroid.stuido.mind_game.feature.game.mvi.InputMode
 
 /**
@@ -33,6 +35,9 @@ fun GameToolBar(
     onPause: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val notesLabel = if (noteMode) stringResource(R.string.tool_notes_active) else stringResource(R.string.tool_notes)
+    val pauseLabel = if (isPaused) stringResource(R.string.action_resume) else stringResource(R.string.action_pause)
+
     Surface(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -41,12 +46,12 @@ fun GameToolBar(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
         ) {
-            ToolButton(label = if (noteMode) "笔记✓" else "笔记", enabled = canAct || true) { onNoteMode() }
-            ToolButton(label = "橡皮", enabled = canAct) { onErase() }
-            ToolButton(label = "提示", enabled = canAct) { onHint() }
-            ToolButton(label = "判错", enabled = canAct) { onCheck() }
-            ToolButton(label = "求解", enabled = canAct) { onSolve() }
-            ToolButton(label = if (isPaused) "继续" else "暂停", enabled = true) { onPause() }
+            ToolButton(label = notesLabel, enabled = true) { onNoteMode() }
+            ToolButton(label = stringResource(R.string.tool_erase), enabled = canAct) { onErase() }
+            ToolButton(label = stringResource(R.string.tool_hint), enabled = canAct) { onHint() }
+            ToolButton(label = stringResource(R.string.tool_check), enabled = canAct) { onCheck() }
+            ToolButton(label = stringResource(R.string.tool_solve), enabled = canAct) { onSolve() }
+            ToolButton(label = pauseLabel, enabled = true) { onPause() }
         }
     }
 }

@@ -1,3 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">mind-game</string>
+
+    <!-- Home 主菜单 -->
+    <string name="home_title">Mind Game · Sudoku</string>
+    <string name="home_subtitle">Pick a mode and a board size to start a new game.</string>
+    <string name="section_mode">Mode</string>
+    <string name="home_free">Free</string>
+    <string name="home_daily">Daily</string>
+    <string name="section_board_size">Board Size</string>
+    <string name="board_x4">4×4</string>
+    <string name="board_x6">6×6</string>
+    <string name="board_x9">9×9</string>
+    <string name="section_difficulty">Difficulty</string>
+    <string name="home_daily_note">Daily uses %1$s difficulty; the puzzle is the same every day.</string>
+    <string name="button_start_daily">Start Daily</string>
+    <string name="button_start_free">Start Free</string>
+    <string name="home_settings">Theme &amp; Settings</string>
 </resources>
