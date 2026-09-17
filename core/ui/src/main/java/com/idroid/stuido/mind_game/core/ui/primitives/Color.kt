@@ -1,13 +1,14 @@
-package com.idroid.stuido.mind_game.core.ui.theme
+package com.idroid.stuido.mind_game.core.ui.primitives
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import com.idroid.stuido.mind_game.core.ui.theme.AppThemeScheme
 
 /**
  * Brand / semantic color roles (Material3).
- * Every [AppThemeScheme] ships a full light+dark [ColorScheme] pair.
+ * Every [com.idroid.stuido.mind_game.core.ui.theme.AppThemeScheme] ships a full light+dark [ColorScheme] pair.
  */
 private val LilacLight = lightColorScheme(
     primary = Color(0xFF6650A4), onPrimary = Color(0xFFFFFFFF),

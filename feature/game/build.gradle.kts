@@ -1,27 +1,12 @@
+import com.android.build.api.dsl.LibraryExtension
+
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
+    id("mindgame.android.library")
+    id("mindgame.android.library.compose")
 }
 
-android {
-    namespace = "com.idroid.stuido.mind_game.feature.game"
-    compileSdk = 36
-
-    defaultConfig {
-        minSdk = 30
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-    buildFeatures {
-        compose = true
-    }
+extensions.configure<LibraryExtension> {
+    namespace = Config.Feature.Game.PACKAGE_NAME
 }
 
 dependencies {
@@ -29,7 +14,6 @@ dependencies {
     implementation(project(":core:ui"))
 
     // Compose
-    implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.material3)
@@ -46,5 +30,4 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 
-    debugImplementation(libs.androidx.compose.ui.tooling)
 }

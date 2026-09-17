@@ -17,4 +17,17 @@
     <string name="button_start_daily">Start Daily</string>
     <string name="button_start_free">Start Free</string>
     <string name="home_settings">Theme &amp; Settings</string>
+
+    <!-- 游戏列表 -->
+    <string name="games_title">Games</string>
+    <string name="game_sudoku_title">Sudoku</string>
+    <string name="game_sudoku_desc">Fill the grid so every row, column and box holds 1–9.</string>
+    <string name="game_crossword_title">Crossword</string>
+    <string name="game_crossword_desc">Solve clues and fill the crossword grid.</string>
+    <string name="game_zooduku_title">Zooduku</string>
+    <string name="game_zooduku_desc">A picture-based logic puzzle for younger players.</string>
+
+    <!-- 通用 -->
+    <string name="action_back">Back</string>
+    <string name="coming_soon_message">This game is coming soon. Stay tuned!</string>
 </resources>

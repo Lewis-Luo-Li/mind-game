@@ -15,7 +15,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -25,7 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.idroid.stuido.mind_game.core.ui.theme.AppThemeMode
 import com.idroid.stuido.mind_game.core.ui.theme.AppThemeScheme
-import com.idroid.stuido.mind_game.core.ui.theme.schemeFor
+import com.idroid.stuido.mind_game.core.ui.primitives.schemeFor
 
 /**
  * 设置页（Appearance / 主题选择）。
@@ -41,46 +40,44 @@ fun SettingsScreen(
     themePrefs: ThemePrefs,
     onBack: () -> Unit,
 ) {
-    Scaffold { inner ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(inner)
-                .padding(20.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+    // 系统栏内边距由上层（MindGameApp 的 safeDrawing 容器）统一处理。
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(20.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = onBack) { Text("Back") }
-                Text("Settings", style = MaterialTheme.typography.headlineMedium)
-            }
-            Text(
-                "Appearance & theme colors. Live preview on the Sudoku board.",
-                style = MaterialTheme.typography.bodyMedium,
+            TextButton(onClick = onBack) { Text("Back") }
+            Text("Settings", style = MaterialTheme.typography.headlineMedium)
+        }
+        Text(
+            "Appearance & theme colors. Live preview on the Sudoku board.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+
+        SectionCard("Theme (Light / Dark)") {
+            FilterChipList(
+                labelsToValues = AppThemeMode.entries.map { it.label to it },
+                selected = themePrefs.mode,
+                onSelect = themePrefs::setMode,
             )
+        }
 
-            SectionCard("Theme (Light / Dark)") {
-                FilterChipList(
-                    labelsToValues = AppThemeMode.entries.map { it.label to it },
-                    selected = themePrefs.mode,
-                    onSelect = themePrefs::setMode,
-                )
-            }
-
-            SectionCard("Accent color") {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AppThemeScheme.entries.forEach { scheme ->
-                        AccentRow(
-                            label = scheme.label,
-                            scheme = scheme,
-                            dark = themePrefs.mode != AppThemeMode.LIGHT,
-                            selected = scheme == themePrefs.scheme,
-                            onClick = { themePrefs.setScheme(scheme) },
-                        )
-                    }
+        SectionCard("Accent color") {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                AppThemeScheme.entries.forEach { scheme ->
+                    AccentRow(
+                        label = scheme.label,
+                        scheme = scheme,
+                        dark = themePrefs.mode != AppThemeMode.LIGHT,
+                        selected = scheme == themePrefs.scheme,
+                        onClick = { themePrefs.setScheme(scheme) },
+                    )
                 }
             }
         }
