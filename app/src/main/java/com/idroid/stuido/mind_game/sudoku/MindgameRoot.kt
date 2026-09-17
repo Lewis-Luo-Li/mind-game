@@ -1,7 +1,11 @@
 package com.idroid.stuido.mind_game.sudoku
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.idroid.stuido.mind_game.core.ui.theme.MindgameTheme
 
@@ -21,6 +25,15 @@ fun MindgameRoot(content: @Composable (themePrefs: ThemePrefs) -> Unit) {
         scheme = themePrefs.scheme,
         mode = themePrefs.mode,
     ) {
-        content(themePrefs)
+        // 用主题背景色铺满整棵 UI，充当 window background。
+        // 这样即使某些页面（如移除 Scaffold 后的主菜单）自身不画背景，
+        // 也不会露出未着色的窗口底色，且换肤时背景随之更新。
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+        ) {
+            content(themePrefs)
+        }
     }
 }

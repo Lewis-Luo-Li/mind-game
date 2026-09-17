@@ -2,8 +2,18 @@ package com.idroid.stuido.mind_game.core.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import com.idroid.stuido.mind_game.core.ui.primitives.LocalFontSize
+import com.idroid.stuido.mind_game.core.ui.primitives.LocalMindGameFontFamily
+import com.idroid.stuido.mind_game.core.ui.primitives.LocalTypography
+import com.idroid.stuido.mind_game.core.ui.primitives.MindGameFontFamily
+import com.idroid.stuido.mind_game.core.ui.primitives.MindGameFontSize
+import com.idroid.stuido.mind_game.core.ui.primitives.MindGameTypography
+import com.idroid.stuido.mind_game.core.ui.primitives.defaultFontSize
+import com.idroid.stuido.mind_game.core.ui.primitives.defaultMindGameFontFamily
+import com.idroid.stuido.mind_game.core.ui.primitives.defaultTypography
+import com.idroid.stuido.mind_game.core.ui.primitives.schemeFor
 
 /**
  * App 顶层主题入口。
@@ -22,6 +32,9 @@ import androidx.compose.runtime.Composable
 fun MindgameTheme(
     scheme: AppThemeScheme = AppThemeScheme.LILAC,
     mode: AppThemeMode? = null,
+    fontSize: MindGameFontSize = defaultFontSize,
+    fontFamily: MindGameFontFamily = defaultMindGameFontFamily,
+    typography: MindGameTypography = defaultTypography,
     content: @Composable () -> Unit,
 ) {
     val dark: Boolean = when (mode) {
@@ -29,10 +42,20 @@ fun MindgameTheme(
         AppThemeMode.DARK -> true
         AppThemeMode.SYSTEM, null -> isSystemInDarkTheme()
     }
+    CompositionLocalProvider(
+        LocalFontSize provides fontSize,
+        LocalMindGameFontFamily provides fontFamily,
+        LocalTypography provides typography
+    ) {
+        MaterialTheme(
+            colorScheme = schemeFor(scheme, dark),
+            content = content,
+        )
+    }
+}
 
-    MaterialTheme(
-        colorScheme = schemeFor(scheme, dark),
-        typography = Typography,
-        content = content,
-    )
+object Theme {
+    val typography: MindGameTypography
+        @Composable
+        get() = LocalTypography.current
 }
