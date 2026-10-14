@@ -20,7 +20,7 @@ import com.idroid.stuido.mind_game.feature.game.GameMode
 import com.idroid.stuido.mind_game.feature.game.ui.GameScreenRoute
 import com.idroid.stuido.mind_game.main.model.GameId
 import com.idroid.stuido.mind_game.main.model.gameCatalog
-import com.idroid.stuido.mind_game.mainpage.MainScreen
+import com.idroid.stuido.mind_game.main.page.MainScreen
 
 /**
  * 页内导航目标（非对局态）。

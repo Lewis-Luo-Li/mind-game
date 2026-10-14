@@ -1,4 +1,4 @@
-package com.idroid.stuido.mind_game.core.ui.components
+package com.idroid.stuido.mind_game.core.ui.components.text
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -6,7 +6,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
-import com.idroid.stuido.mind_game.core.ui.components.text.TextConfig
 import com.idroid.stuido.mind_game.core.ui.theme.Theme
 import com.idroid.stuido.mind_game.core.ui.util.isHidden
 
