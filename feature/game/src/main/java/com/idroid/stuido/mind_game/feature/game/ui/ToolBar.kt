@@ -52,7 +52,7 @@ fun GameToolBar(
             ToolButton(label = stringResource(R.string.tool_erase), enabled = canAct) { onErase() }
             ToolButton(
                 label = stringResource(R.string.tool_hint_count, hintsLeft),
-                enabled = canAct && hintsLeft > 0,
+                enabled = hintsLeft > 0,
             ) { onHint() }
             ToolButton(label = stringResource(R.string.tool_check), enabled = canAct) { onCheck() }
             if (showDebugSolve) {

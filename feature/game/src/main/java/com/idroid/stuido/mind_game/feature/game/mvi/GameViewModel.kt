@@ -51,7 +51,7 @@ class GameViewModel(
     /** 最近一次开局参数：供 [GameEvent.Restart] 原样复用。 */
     private var lastRequest: GameConfig? = null
 
-    private var lastSeed: GameSeed? = null
+    private var lastGame: Pair<GameConfig, GameSeed>? = null
 
     /** 节奏驱动器：每秒若处于 RUNNING 则 tick＋1。 */
     private var tickerJob: kotlinx.coroutines.Job? = null
@@ -138,17 +138,21 @@ class GameViewModel(
 
     /** 把生成成功的种子落盘：记录配置 → 铺盘 → 清除忙碌 → 清空判错高亮。 */
     private fun applySeed(seed: GameSeed) {
-        lastSeed = seed
+        val config = _uiState.value.config
+        lastGame = config to seed
         _uiState.update {
-            GameReducer.startGame(GameReducer.setGameConfig(it, it.config), seed)
+            GameReducer.startGame(GameReducer.setGameConfig(it, config), seed)
         }
         _uiState.update { GameReducer.setBusy(it, false) }
     }
 
     private fun retrySamePuzzle() {
-        val seed = lastSeed ?: return
+        val (config, seed) = lastGame ?: return
         if (_uiState.value.progress.isBusy) return
-        _uiState.update { GameReducer.startGame(it, seed) }
+        lastRequest = config
+        _uiState.update {
+            GameReducer.startGame(GameReducer.setGameConfig(it, config), seed)
+        }
     }
 
     // ---------------------------------------------------------------- 盘面操作

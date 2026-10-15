@@ -155,6 +155,35 @@ class GameViewModelTest {
     }
 
     @Test
+    fun `retry after failed new game restores the last successful config and puzzle`() = runGameTest {
+        val vm = newViewModel()
+        val effects = mutableListOf<GameEffect>()
+        collectEffects(vm, effects)
+        vm.dispatch(
+            GameEvent.NewGame(
+                GameMode.FREE,
+                BoardSpec.CLASSIC,
+                Difficulty.EASY,
+                seed = 42L,
+            ),
+        )
+        runCurrent()
+        val originalValues = vm.uiState.value.board.values
+
+        vm.dispatch(GameEvent.NewGame(GameMode.FREE, BoardSpec.MINI, Difficulty.EXPERT))
+        runCurrent()
+
+        assertTrue(effects.any { it is GameEffect.NewGameFailed })
+        vm.dispatch(GameEvent.RetrySamePuzzle)
+
+        val retried = vm.uiState.value
+        assertEquals(BoardSpec.CLASSIC, retried.config.spec)
+        assertEquals(Difficulty.EASY, retried.config.difficulty)
+        assertEquals(9, retried.board.size)
+        assertEquals(originalValues, retried.board.values)
+    }
+
+    @Test
     fun `hints select unresolved cells and stop at the configured budget`() = runGameTest {
         val vm = newViewModel()
         val effects = mutableListOf<GameEffect>()
