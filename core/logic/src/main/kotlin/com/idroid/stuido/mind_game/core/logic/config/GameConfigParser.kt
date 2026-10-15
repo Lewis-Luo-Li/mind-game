@@ -36,7 +36,7 @@ internal fun GameRemoteConfig.validated(): GameRemoteConfig {
             ?: return@mapNotNull null
         val validDifficulties = difficultyHoles.filter { (difficultyKey, holeCount) ->
             Difficulty.entries.any { it.name.lowercase() == difficultyKey } &&
-                holeCount in 1 until spec.size * spec.size
+                holeCount in 1..maxHoles(spec)
         }
         if (validDifficulties.isEmpty()) null else specKey to validDifficulties
     }.toMap()
@@ -80,6 +80,14 @@ internal fun GameRemoteConfig.validated(): GameRemoteConfig {
         ads = ads.copy(interstitial = validInterstitial),
     )
 }
+
+/** Caps holes to retain minimum unique-solution clues: MINI 4, MEDIUM 8, CLASSIC 17. */
+private fun maxHoles(spec: BoardSpec): Int =
+    spec.size * spec.size - when (spec) {
+        BoardSpec.MINI -> 4
+        BoardSpec.MEDIUM -> 8
+        BoardSpec.CLASSIC -> 17
+    }
 
 private fun RewardRule.validatedOr(default: RewardRule): RewardRule =
         if (amount in 1..9 && maxPerGame in 0..9) this else default
