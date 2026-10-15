@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
 import com.idroid.stuido.mind_game.feature.game.GameMode
+import com.idroid.stuido.mind_game.feature.game.GameOutcome
 import com.idroid.stuido.mind_game.feature.game.GameStatus
 import com.idroid.stuido.mind_game.feature.game.reducers.GameReducer
 import com.idroid.stuido.mind_game.feature.game.engine.GameFactory
@@ -12,6 +13,7 @@ import com.idroid.stuido.mind_game.feature.game.engine.GameSeed
 import com.idroid.stuido.mind_game.feature.game.engine.HintProvider
 import com.idroid.stuido.mind_game.feature.game.engine.InputValidator
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -27,7 +29,7 @@ import kotlinx.coroutines.withContext
  *
  * 职责分层：
  *  - **纯状态变换**交给 [GameReducer]；
- *  - **跨线程/耗时**（生成谜题、求解）放到 [Dispatchers.Default]；
+ *  - **跨线程/耗时**（生成谜题、求解）放到可注入的 dispatcher（默认 [Dispatchers.Default]）；
  *  - **一次性副作用**用 Channel 型 [GameEffect] 发出（Snackbar / 完成 / 超限）；
  *  - **计时器**由本类用一个 1Hz 协程驱动 [GameEvent.Tick]。
  *
@@ -37,6 +39,7 @@ class GameViewModel(
     private val gameFactory: GameFactory = GameFactory(),
     private val hintProvider: HintProvider = HintProvider(),
     private val inputValidator: InputValidator = InputValidator(),
+    private val generationDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GameUiState())
@@ -47,6 +50,8 @@ class GameViewModel(
 
     /** 最近一次开局参数：供 [GameEvent.Restart] 原样复用。 */
     private var lastRequest: GameConfig? = null
+
+    private var lastSeed: GameSeed? = null
 
     /** 节奏驱动器：每秒若处于 RUNNING 则 tick＋1。 */
     private var tickerJob: kotlinx.coroutines.Job? = null
@@ -59,23 +64,28 @@ class GameViewModel(
     fun dispatch(event: GameEvent) {
         when (event) {
             is GameEvent.NewGame -> newGame(
-                event.mode, event.spec, event.difficulty, event.seed, event.maxMistakes,
+                event.mode, event.spec, event.difficulty, event.seed, event.maxMistakes, event.maxHints,
             )
 
             GameEvent.Restart -> lastRequest?.let { cfg ->
-                newGame(cfg.mode, cfg.spec, cfg.difficulty, cfg.seed, cfg.maxMistakes)
+                newGame(cfg.mode, cfg.spec, cfg.difficulty, cfg.seed, cfg.maxMistakes, cfg.maxHints)
             }
+            GameEvent.RetrySamePuzzle -> retrySamePuzzle()
             GameEvent.Exit -> Unit // 退出由宿主（onExit）完成，不在此处理
 
-            is GameEvent.SelectCell -> _uiState.update { GameReducer.selectCell(it, event.index) }
-            is GameEvent.InputNumber -> inputNumber(event.index, event.value)
-            is GameEvent.ToggleNote -> _uiState.update { GameReducer.toggleNote(it, event.index, event.value) }
-            GameEvent.Erase -> erase()
+            is GameEvent.SelectCell -> ifRunning {
+                _uiState.update { GameReducer.selectCell(it, event.index) }
+            }
+            is GameEvent.InputNumber -> ifRunning { inputNumber(event.index, event.value) }
+            is GameEvent.ToggleNote -> ifRunning {
+                _uiState.update { GameReducer.toggleNote(it, event.index, event.value) }
+            }
+            GameEvent.Erase -> ifRunning { erase() }
 
             GameEvent.ToggleNoteMode -> _uiState.update { GameReducer.toggleNoteMode(it) }
-            GameEvent.RequestHint -> requestHint()
-            GameEvent.RequestCheck -> requestCheck()
-            GameEvent.RequestSolve -> solve()
+            GameEvent.RequestHint -> ifRunning { requestHint() }
+            GameEvent.RequestCheck -> ifRunning { requestCheck() }
+            GameEvent.RequestSolve -> ifRunning { solve() }
 
             is GameEvent.Tick -> tick(event.elapsedSeconds)
             GameEvent.TogglePause -> onTogglePause()
@@ -90,6 +100,7 @@ class GameViewModel(
         difficulty: Difficulty,
         seed: Long?,
         maxMistakes: Int,
+        maxHints: Int,
     ) {
         if (_uiState.value.progress.isBusy) return
         val config = GameConfig(
@@ -98,13 +109,14 @@ class GameViewModel(
             difficulty = difficulty,
             seed = seed,
             maxMistakes = maxMistakes,
+            maxHints = maxHints,
         )
         lastRequest = config
         _uiState.update { GameReducer.setBusy(GameReducer.setGameConfig(it, config), true) }
 
         viewModelScope.launch {
             val result = try {
-                withContext(Dispatchers.Default) {
+                withContext(generationDispatcher) {
                     gameFactory.newGame(mode, spec, difficulty, seed)
                 }
             } catch (e: IllegalArgumentException) {
@@ -126,10 +138,17 @@ class GameViewModel(
 
     /** 把生成成功的种子落盘：记录配置 → 铺盘 → 清除忙碌 → 清空判错高亮。 */
     private fun applySeed(seed: GameSeed) {
+        lastSeed = seed
         _uiState.update {
             GameReducer.startGame(GameReducer.setGameConfig(it, it.config), seed)
         }
         _uiState.update { GameReducer.setBusy(it, false) }
+    }
+
+    private fun retrySamePuzzle() {
+        val seed = lastSeed ?: return
+        if (_uiState.value.progress.isBusy) return
+        _uiState.update { GameReducer.startGame(it, seed) }
     }
 
     // ---------------------------------------------------------------- 盘面操作
@@ -168,7 +187,7 @@ class GameViewModel(
         _uiState.update { GameReducer.incrementMistakes(it) }
         _effect.trySend(GameEffect.ShowMessage("❌ Doesn't match the solution (+1)"))
         if (exceeds) {
-            _uiState.update { GameReducer.fail(it) }
+            _uiState.update { GameReducer.finish(it, GameOutcome.FAILED) }
             _effect.trySend(GameEffect.GameOver)
         }
     }
@@ -176,10 +195,22 @@ class GameViewModel(
     // ---------------------------------------------------------------- 工具
 
     private fun requestHint() {
-        val index = _uiState.value.selection.index ?: return
-        if (index in _uiState.value.board.givens) return
-        val answer = hintProvider.hintFor(index, _uiState.value.board.solution) ?: return
-        _uiState.update { GameReducer.inputNumber(it, index, answer) }
+        val state = _uiState.value
+        if (state.hintsLeft == 0) {
+            _effect.trySend(GameEffect.ShowMessage("No hints left"))
+            return
+        }
+        val board = state.board
+        val target = state.selection.index?.takeIf { index ->
+            index in board.values.indices &&
+                index !in board.givens &&
+                board.values[index] != board.solution[index]
+        } ?: board.values.indices.firstOrNull { index ->
+            index !in board.givens && board.values[index] != board.solution[index]
+        } ?: return
+        val answer = board.solution[target]
+        _uiState.update { GameReducer.useHint(it, target, answer) }
+        _effect.trySend(GameEffect.HintFilled(target, answer))
 
         if (inputValidator.isComplete(_uiState.value.board)) finishAsSuccess()
     }
@@ -205,12 +236,12 @@ class GameViewModel(
 
     /** 自动求解（演示）：铺满终盘后走完成流程。 */
     private fun solve() {
-        _uiState.update { GameReducer.revealSolution(it) }
-        finishAsSuccess()
+        _uiState.update { GameReducer.finish(GameReducer.revealSolution(it), GameOutcome.REVEALED) }
+        _effect.trySend(GameEffect.SolutionRevealed)
     }
 
     private fun finishAsSuccess() {
-        _uiState.update { GameReducer.finish(it) }
+        _uiState.update { GameReducer.finish(it, GameOutcome.SOLVED) }
         _effect.trySend(GameEffect.PuzzleCompleted)
     }
 
@@ -239,6 +270,10 @@ class GameViewModel(
         if (_uiState.value.progress.status == GameStatus.RUNNING) {
             _uiState.update { GameReducer.tick(it, elapsedSeconds) }
         }
+    }
+
+    private inline fun ifRunning(block: () -> Unit) {
+        if (_uiState.value.progress.status == GameStatus.RUNNING) block()
     }
 
     override fun onCleared() {

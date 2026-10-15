@@ -3,9 +3,11 @@ package com.idroid.stuido.mind_game.feature.game.reducers
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
 import com.idroid.stuido.mind_game.feature.game.GameMode
+import com.idroid.stuido.mind_game.feature.game.GameOutcome
 import com.idroid.stuido.mind_game.feature.game.GameStatus
 import com.idroid.stuido.mind_game.feature.game.engine.GameSeed
 import com.idroid.stuido.mind_game.feature.game.mvi.GameConfig
+import com.idroid.stuido.mind_game.feature.game.mvi.GameProgress
 import com.idroid.stuido.mind_game.feature.game.mvi.GameUiState
 import com.idroid.stuido.mind_game.feature.game.mvi.InputMode
 import org.junit.Assert.assertEquals
@@ -75,6 +77,20 @@ class GameReducerTest {
         assertEquals(0, s.progress.timerSeconds)
         assertNull(s.selection.index)
         assertTrue(s.selection.conflicts.isEmpty())
+    }
+
+    @Test
+    fun `startGame 重置提示次数和 outcome`() {
+        val state = startedState().copy(
+            progress = GameProgress(
+                status = GameStatus.FINISHED,
+                hintsUsed = 2,
+                outcome = GameOutcome.FAILED,
+            ),
+        )
+        val restarted = GameReducer.startGame(state, seed())
+        assertEquals(0, restarted.progress.hintsUsed)
+        assertNull(restarted.progress.outcome)
     }
 
     @Test
@@ -155,6 +171,22 @@ class GameReducerTest {
         assertEquals(0, s.board.values[12])
     }
 
+    @Test
+    fun `useHint 填入值并增加提示次数但不增加错误`() {
+        val state = startedState()
+        val hinted = GameReducer.useHint(state, 12, solution[12])
+        assertEquals(solution[12], hinted.board.values[12])
+        assertEquals(1, hinted.progress.hintsUsed)
+        assertEquals(state.progress.mistakes, hinted.progress.mistakes)
+        assertEquals(12, hinted.selection.index)
+    }
+
+    @Test
+    fun `useHint 对给定格无效`() {
+        val state = startedState()
+        assertEquals(state, GameReducer.useHint(state, 0, solution[0]))
+    }
+
     // 笔记
     @Test
     fun `toggleNote 在空白非给定格添加并可再切移除`() {
@@ -233,24 +265,26 @@ class GameReducerTest {
 
     // 终态
     @Test
-    fun `finish 置为 FINISHED 并驱动辅助字段`() {
-        val s = GameReducer.finish(GameReducer.tick(startedState(), 9))
+    fun `finish 记录 outcome 并置为 FINISHED`() {
+        val s = GameReducer.finish(GameReducer.tick(startedState(), 9), GameOutcome.SOLVED)
         assertEquals(GameStatus.FINISHED, s.progress.status)
+        assertEquals(GameOutcome.SOLVED, s.progress.outcome)
         assertFalse(s.progress.isRunning)
         assertTrue(s.progress.isFinished)
     }
 
     @Test
     fun `finished 态再次 togglePause 不会改变`() {
-        val finished = GameReducer.finish(startedState())
+        val finished = GameReducer.finish(startedState(), GameOutcome.SOLVED)
         assertEquals(GameStatus.FINISHED, GameReducer.togglePause(finished).progress.status)
     }
 
     @Test
-    fun `fail 代表错误用尽的失败结束`() {
-        val s = GameReducer.fail(GameReducer.incrementMistakes(startedState(), 3))
+    fun `finish 记录错误用尽的失败 outcome`() {
+        val s = GameReducer.finish(GameReducer.incrementMistakes(startedState(), 3), GameOutcome.FAILED)
         assertEquals(GameStatus.FINISHED, s.progress.status)
         assertEquals(3, s.progress.mistakes)
+        assertEquals(GameOutcome.FAILED, s.progress.outcome)
     }
 
     @Test

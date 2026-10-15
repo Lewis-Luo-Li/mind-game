@@ -33,6 +33,8 @@ fun GameToolBar(
     onCheck: () -> Unit,
     onSolve: () -> Unit,
     onPause: () -> Unit,
+    hintsLeft: Int,
+    showDebugSolve: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val notesLabel = if (noteMode) stringResource(R.string.tool_notes_active) else stringResource(R.string.tool_notes)
@@ -48,9 +50,14 @@ fun GameToolBar(
         ) {
             ToolButton(label = notesLabel, enabled = true) { onNoteMode() }
             ToolButton(label = stringResource(R.string.tool_erase), enabled = canAct) { onErase() }
-            ToolButton(label = stringResource(R.string.tool_hint), enabled = canAct) { onHint() }
+            ToolButton(
+                label = stringResource(R.string.tool_hint_count, hintsLeft),
+                enabled = canAct && hintsLeft > 0,
+            ) { onHint() }
             ToolButton(label = stringResource(R.string.tool_check), enabled = canAct) { onCheck() }
-            ToolButton(label = stringResource(R.string.tool_solve), enabled = canAct) { onSolve() }
+            if (showDebugSolve) {
+                ToolButton(label = stringResource(R.string.tool_solve), enabled = canAct) { onSolve() }
+            }
             ToolButton(label = pauseLabel, enabled = true) { onPause() }
         }
     }

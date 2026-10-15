@@ -22,4 +22,7 @@ sealed interface GameEffect {
 
     /** 误触错误达上限而失败结束。 */
     data object GameOver : GameEffect
+
+    /** The solution was revealed instead of solving the puzzle. */
+    data object SolutionRevealed : GameEffect
 }
