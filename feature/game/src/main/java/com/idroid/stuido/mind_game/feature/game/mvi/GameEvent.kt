@@ -23,10 +23,14 @@ sealed interface GameEvent {
         val difficulty: Difficulty = Difficulty.EASY,
         val seed: Long? = null,
         val maxMistakes: Int = 3,
+        val maxHints: Int = 3,
     ) : GameEvent
 
     /** 重新开始当前对局（同参数再开一局）。 */
     data object Restart : GameEvent
+
+    /** Replay the current puzzle from scratch. */
+    data object RetrySamePuzzle : GameEvent
 
     /** 返回上一级 / 退出当前对局。 */
     data object Exit : GameEvent
@@ -58,7 +62,7 @@ sealed interface GameEvent {
     /** 请求核对当前已填数值是否与终盘一致（同步提示冲突）。 */
     data object RequestCheck : GameEvent
 
-    /** 自动求解并铺满（演示用途）：成功后进入 FINISHED。 */
+    /** Reveal the solution and end the game without counting it as solved. */
     data object RequestSolve : GameEvent
 
     // ---------- 计时 / 暂停 ----------

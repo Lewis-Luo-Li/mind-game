@@ -9,11 +9,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -23,6 +31,7 @@ import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
 import com.idroid.stuido.mind_game.core.ui.theme.MindgameTheme
 import com.idroid.stuido.mind_game.feature.game.GameMode
+import com.idroid.stuido.mind_game.feature.game.GameOutcome
 import com.idroid.stuido.mind_game.feature.game.GameStatus
 import com.idroid.stuido.mind_game.feature.game.R
 import com.idroid.stuido.mind_game.feature.game.mvi.BoardCells
@@ -57,10 +66,13 @@ fun GameScreen(
     state: GameUiState,
     dispatch: (GameEvent) -> Unit,
     onExit: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    showDebugSolve: Boolean = false,
 ) {
     val status = state.progress.status
     val finished = status == GameStatus.FINISHED
     val paused = status == GameStatus.PAUSED
+    var showSolveDialog by remember { mutableStateOf(false) }
 
     fun pressDigit(digit: Int) {
         val idx = state.selection.index ?: return
@@ -73,7 +85,7 @@ fun GameScreen(
         dispatch(event)
     }
 
-    Scaffold { inner ->
+    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { inner ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -91,6 +103,8 @@ fun GameScreen(
                     timerSeconds = state.progress.timerSeconds,
                     mistakes = state.progress.mistakes,
                     maxMistakes = state.config.maxMistakes,
+                    hintsLeft = state.hintsLeft,
+                    maxHints = state.config.maxHints,
                     onExit = onExit,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -111,11 +125,13 @@ fun GameScreen(
                             noteMode = state.selection.inputMode == InputMode.NOTE,
                             isPaused = status == GameStatus.PAUSED,
                             canAct = state.selection.index?.let { it in state.board.givens }?.not() ?: true,
+                            hintsLeft = state.hintsLeft,
+                            showDebugSolve = showDebugSolve,
                             onNoteMode = { dispatch(GameEvent.ToggleNoteMode) },
                             onErase = { dispatch(GameEvent.Erase) },
                             onHint = { dispatch(GameEvent.RequestHint) },
                             onCheck = { dispatch(GameEvent.RequestCheck) },
-                            onSolve = { dispatch(GameEvent.RequestSolve) },
+                            onSolve = { showSolveDialog = true },
                             onPause = { dispatch(GameEvent.TogglePause) },
                         )
                         NumberPad(
@@ -134,16 +150,41 @@ fun GameScreen(
                 )
             }
             if (finished && state.board.size > 0) {
-                val victory = state.progress.mistakes < state.config.maxMistakes
                 FinishPanel(
-                    victory = victory,
-                    mistakes = state.progress.mistakes,
+                    outcome = state.progress.outcome ?: GameOutcome.SOLVED,
                     timerSeconds = state.progress.timerSeconds,
-                    onRetry = { dispatch(GameEvent.Restart) },
+                    mistakes = state.progress.mistakes,
+                    maxMistakes = state.config.maxMistakes,
+                    hintsUsed = state.progress.hintsUsed,
+                    maxHints = state.config.maxHints,
+                    onRetrySamePuzzle = { dispatch(GameEvent.RetrySamePuzzle) },
+                    onNewGame = { dispatch(GameEvent.Restart) },
                     onExit = onExit,
                 )
             }
         }
+    }
+    if (showSolveDialog) {
+        AlertDialog(
+            onDismissRequest = { showSolveDialog = false },
+            title = { Text(stringResource(R.string.solve_dialog_title)) },
+            text = { Text(stringResource(R.string.solve_dialog_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showSolveDialog = false
+                        dispatch(GameEvent.RequestSolve)
+                    },
+                ) {
+                    Text(stringResource(R.string.action_reveal))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSolveDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
     }
 }
 
@@ -229,11 +270,30 @@ private fun pausedMiniState() = runningMiniState().copy(
 )
 
 private fun victoryMiniState() = runningMiniState().copy(
-    progress = GameProgress(status = GameStatus.FINISHED, mistakes = 0, timerSeconds = 135),
+    progress = GameProgress(
+        status = GameStatus.FINISHED,
+        mistakes = 0,
+        timerSeconds = 135,
+        outcome = GameOutcome.SOLVED,
+    ),
 )
 
 private fun failedMiniState() = runningMiniState().copy(
-    progress = GameProgress(status = GameStatus.FINISHED, mistakes = 3, timerSeconds = 88),
+    progress = GameProgress(
+        status = GameStatus.FINISHED,
+        mistakes = 3,
+        timerSeconds = 88,
+        outcome = GameOutcome.FAILED,
+    ),
+)
+
+private fun revealedMiniState() = runningMiniState().copy(
+    progress = GameProgress(
+        status = GameStatus.FINISHED,
+        mistakes = 1,
+        timerSeconds = 78,
+        outcome = GameOutcome.REVEALED,
+    ),
 )
 
 @Preview(showBackground = true, name = "Game · Running (4x4)", widthDp = 420)
@@ -264,6 +324,12 @@ private fun GamePreviewVictory() {
 @Composable
 private fun GamePreviewFailed() {
     gamePreview(failedMiniState())
+}
+
+@Preview(showBackground = true, name = "Game · Revealed (4x4)", widthDp = 420)
+@Composable
+private fun GamePreviewRevealed() {
+    gamePreview(revealedMiniState())
 }
 
 // ---------------------------------------------------------------------

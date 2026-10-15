@@ -4,7 +4,7 @@ An Android puzzle-game app built with Kotlin and Jetpack Compose. The first (and
 
 - **Free mode**: pick a board size and difficulty; each game is a new random puzzle.
 - **Daily mode**: a puzzle seeded from today's date, so everyone gets the same board for a given day and size.
-- **In-game tools**: pencil notes, erase, hint, check, auto-solve, pause, timer and a 3-mistake limit.
+- **In-game tools**: pencil notes, erase, limited hints, check, debug-only solution reveal, pause, timer and configurable lives.
 - **Theming**: System / Light / Dark mode and four accent palettes (Lilac, Ocean, Forest, Sunset), applied live.
 
 ---
@@ -105,12 +105,12 @@ Plugins: `mindgame.android.library`, `mindgame.android.library.compose`
 
 | Package | Key types | Responsibility |
 |---|---|---|
-| `mvi` | `GameUiState`, `GameEvent`, `GameEffect`, `GameViewModel` | MVI contract. `GameUiState` is an immutable snapshot (`config`, `board`, `selection`, `progress`). The ViewModel is the single state owner: `dispatch(GameEvent)` in, `uiState: StateFlow` and `effect: Flow<GameEffect>` out. Puzzle generation runs on `Dispatchers.Default`; a 1 Hz coroutine drives the timer. |
-| `reducers` | `GameReducer` | Pure `(GameUiState, input) -> GameUiState` functions (select, input, notes, erase, pause, finish, …). |
+| `mvi` | `GameUiState`, `GameEvent`, `GameEffect`, `GameViewModel` | MVI contract. `GameUiState` is an immutable snapshot (`config`, `board`, `selection`, `progress`). The ViewModel is the single state owner: `dispatch(GameEvent)` in, `uiState: StateFlow` and `effect: Flow<GameEffect>` out. Puzzle generation runs on an injectable dispatcher; a 1 Hz coroutine drives the timer. |
+| `reducers` | `GameReducer` | Pure `(GameUiState, input) -> GameUiState` functions (select, input, notes, erase, pause, finish with `GameOutcome`, …). |
 | `engine` | `GameFactory`, `GameSeed`, `HintProvider`, `InputValidator` | Adapts `:core:logic` for the UI: `GameFactory` turns (mode, spec, difficulty, seed) into a `GameSeed` (values, solution, givens); `HintProvider` gives hints and checks answers against the solution; `InputValidator` detects conflicts and completion. |
-| `ui` | `GameScreenRoute`, `GameScreen`, `GameTopBar`, `GameBoard`, `CellView`, `GameToolBar`, `NumberPad`, `BoardGeometry` | `GameScreenRoute` creates one `GameViewModel` per session (`sessionKey`) and dispatches `NewGame` on entry; `GameScreen` is a stateless view of `GameUiState`. |
-| `ui/components` | `PauseScrim`, `FinishPanel` | Pause overlay and win / lose panel. |
-| root | `GameMode` (`FREE`, `DAILY`), `GameStatus` (`IDLE`, `RUNNING`, `PAUSED`, `FINISHED`) | Shared enums. |
+| `ui` | `GameScreenRoute`, `GameScreen`, `GameTopBar`, `GameBoard`, `CellView`, `GameToolBar`, `NumberPad`, `BoardGeometry` | `GameScreenRoute` creates one `GameViewModel` per session (`sessionKey`), dispatches `NewGame`, and collects one-shot effects into snackbars; `GameScreen` renders `GameUiState`. |
+| `ui/components` | `PauseScrim`, `FinishPanel` | Pause overlay (resume or exit) and outcome panel (retry, new game, or exit). |
+| root | `GameMode` (`FREE`, `DAILY`), `GameStatus` (`IDLE`, `RUNNING`, `PAUSED`, `FINISHED`), `GameOutcome` (`SOLVED`, `FAILED`, `REVEALED`) | Shared enums. |
 
 ### `:core:ui` — design system
 Plugins: `mindgame.android.library`, `mindgame.android.library.compose`
@@ -172,23 +172,24 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    UI["GameScreen<br/>(stateless Compose)"] -- "GameEvent<br/>SelectCell / InputNumber / ToggleNote /<br/>Erase / Hint / Check / Solve / TogglePause / Restart" --> VM["GameViewModel.dispatch()"]
+    UI["GameScreen<br/>(Compose)"] -- "GameEvent<br/>SelectCell / InputNumber / ToggleNote /<br/>Erase / Hint / Check / Solve / TogglePause /<br/>RetrySamePuzzle / Restart" --> VM["GameViewModel.dispatch()"]
     VM --> R["GameReducer<br/>(pure functions)"]
     VM --> E["engine<br/>HintProvider · InputValidator · GameFactory"]
     R --> S[("GameUiState<br/>StateFlow")]
     E --> VM
     T["1 Hz ticker"] -- "tick while RUNNING" --> VM
     S -- "collectAsState" --> UI
-    VM -- "GameEffect<br/>NewGameFailed / ShowMessage / PuzzleCompleted / GameOver" --> FX["one-shot effects"]
+    VM -- "GameEffect<br/>NewGameFailed / ShowMessage / HintFilled /<br/>PuzzleCompleted / GameOver / SolutionRevealed" --> FX["one-shot effects<br/>collected by GameScreenRoute"]
 ```
 
-`GameEffect`s are emitted on `GameViewModel.effect`; the UI does not collect them yet.
+`GameEffect`s are emitted on `GameViewModel.effect`; `GameScreenRoute` collects messages and hint feedback into snackbars, while terminal effects are represented by the outcome panel.
 
 Rules applied by `GameViewModel`:
-- A wrong number (doesn't match the solution) adds a mistake; reaching `maxMistakes` (3) ends the game as a loss.
-- Filling the last cell correctly, using a hint that completes the board, or **Solve** ends the game as a win.
+- A wrong number (doesn't match the solution) adds a mistake; reaching `maxMistakes` ends the game with the `FAILED` outcome.
+- Filling the last cell correctly or using a hint that completes the board ends the game with the `SOLVED` outcome. **Solve** reveals the solution with the distinct `REVEALED` outcome.
 - **Check** highlights filled cells that don't match the solution, without changing the board.
-- **Restart** ("Play again") regenerates with the same parameters.
+- Hints have a configured budget; each fills the selected unresolved cell or the first unresolved cell, and further requests show “No hints left”.
+- **Retry same puzzle** replays the stored puzzle from scratch. **New game** regenerates with the same parameters.
 
 ### Game status lifecycle
 
@@ -198,9 +199,10 @@ stateDiagram-v2
     IDLE --> RUNNING: NewGame generated
     RUNNING --> PAUSED: TogglePause
     PAUSED --> RUNNING: TogglePause / Resume
-    RUNNING --> FINISHED: board complete / Solve (win)
-    RUNNING --> FINISHED: mistakes reach 3 (lose)
-    FINISHED --> RUNNING: Restart (Play again)
+    RUNNING --> FINISHED: board complete / hint completes board (SOLVED)
+    RUNNING --> FINISHED: mistakes reach maxMistakes (FAILED)
+    RUNNING --> FINISHED: solution revealed (REVEALED)
+    FINISHED --> RUNNING: RetrySamePuzzle (same seed) / Restart (new puzzle)
     FINISHED --> [*]: Exit
     PAUSED --> [*]: Exit
 ```

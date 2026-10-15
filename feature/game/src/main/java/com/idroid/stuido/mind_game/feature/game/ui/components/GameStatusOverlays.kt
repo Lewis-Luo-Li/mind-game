@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.idroid.stuido.mind_game.feature.game.GameOutcome
 import com.idroid.stuido.mind_game.feature.game.R
 
 /** 暂停覆盖层。 */
@@ -38,18 +39,32 @@ fun PauseScrim(onResume: () -> Unit, onExit: () -> Unit) {
 }
 
 /**
- * 完成 / 失败收尾面板。
- *
- * @param victory true 表示解题成功；false 表示错误用尽失败。
+ * Game outcome summary and replay actions.
  */
 @Composable
 fun FinishPanel(
-    victory: Boolean,
-    mistakes: Int,
+    outcome: GameOutcome,
     timerSeconds: Int,
-    onRetry: () -> Unit,
+    mistakes: Int,
+    maxMistakes: Int,
+    hintsUsed: Int,
+    maxHints: Int,
+    onRetrySamePuzzle: () -> Unit,
+    onNewGame: () -> Unit,
     onExit: () -> Unit,
 ) {
+    val title = when (outcome) {
+        GameOutcome.SOLVED -> stringResource(R.string.finish_victory)
+        GameOutcome.FAILED -> stringResource(R.string.finish_out_of_lives)
+        GameOutcome.REVEALED -> stringResource(R.string.finish_revealed)
+    }
+    val subtitle = when (outcome) {
+        GameOutcome.SOLVED -> null
+        GameOutcome.FAILED -> stringResource(R.string.finish_out_of_lives_body, maxMistakes)
+        GameOutcome.REVEALED -> stringResource(R.string.finish_revealed_body)
+    }
+    val minutes = timerSeconds / 60
+    val seconds = timerSeconds % 60
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -57,15 +72,30 @@ fun FinishPanel(
         contentAlignment = Alignment.Center,
     ) {
         CenteredCard {
-            Text(
-                text = if (victory) stringResource(R.string.finish_victory)
-                else stringResource(R.string.finish_failed),
-                style = MaterialTheme.typography.headlineSmall,
-            )
+            Text(text = title, style = MaterialTheme.typography.headlineSmall)
+            if (subtitle != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(subtitle)
+            }
             Spacer(Modifier.height(8.dp))
-            Text(stringResource(R.string.finish_meta, timerSeconds, mistakes))
+            Text(
+                stringResource(
+                    R.string.finish_meta,
+                    minutes,
+                    seconds,
+                    mistakes,
+                    maxMistakes,
+                    hintsUsed,
+                    maxHints,
+                ),
+            )
             Spacer(Modifier.height(16.dp))
-            Button(onClick = onRetry) { Text(stringResource(R.string.finish_play_again)) }
+            if (outcome == GameOutcome.SOLVED) {
+                Button(onClick = onNewGame) { Text(stringResource(R.string.action_new_game)) }
+            } else {
+                Button(onClick = onRetrySamePuzzle) { Text(stringResource(R.string.action_retry_same)) }
+                TextButton(onClick = onNewGame) { Text(stringResource(R.string.action_new_game)) }
+            }
             TextButton(onClick = onExit) { Text(stringResource(R.string.action_exit)) }
         }
     }

@@ -15,11 +15,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.idroid.stuido.mind_game.BuildConfig
+import com.idroid.stuido.mind_game.config.GameConfigRepository
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
 import com.idroid.stuido.mind_game.core.logic.config.DifficultyConfig
 import com.idroid.stuido.mind_game.core.logic.config.GameRemoteConfig
-import com.idroid.stuido.mind_game.config.GameConfigRepository
 import com.idroid.stuido.mind_game.feature.game.GameMode
 import com.idroid.stuido.mind_game.feature.game.ui.GameScreenRoute
 import com.idroid.stuido.mind_game.main.model.GameId
@@ -92,6 +93,8 @@ fun MindGameApp(themePrefs: ThemePrefs) {
             seed = req.seed,
             difficultyConfig = difficultyConfig,
             maxMistakes = req.rules.lives,
+            maxHints = req.rules.hints,
+            showDebugSolve = BuildConfig.DEBUG,
             sessionKey = "sudoku-game-${req.id}",
         )
         return

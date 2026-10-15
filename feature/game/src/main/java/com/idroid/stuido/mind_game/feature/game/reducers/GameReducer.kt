@@ -1,5 +1,6 @@
 package com.idroid.stuido.mind_game.feature.game.reducers
 
+import com.idroid.stuido.mind_game.feature.game.GameOutcome
 import com.idroid.stuido.mind_game.feature.game.GameStatus
 import com.idroid.stuido.mind_game.feature.game.engine.GameSeed
 import com.idroid.stuido.mind_game.feature.game.mvi.BoardCells
@@ -32,6 +33,8 @@ object GameReducer {
                 status = GameStatus.RUNNING,
                 mistakes = 0,
                 timerSeconds = 0,
+                hintsUsed = 0,
+                outcome = null,
             ),
         )
     }
@@ -64,6 +67,15 @@ object GameReducer {
         return state.copy(
             board = board.copy(values = values, notes = notes),
             selection = state.selection.copy(index = index, conflicts = emptySet()),
+        )
+    }
+
+    fun useHint(state: GameUiState, index: Int, value: Int): GameUiState {
+        if (!state.board.isMutable(index)) return state
+        val updated = inputNumber(state, index, value)
+        return updated.copy(
+            selection = updated.selection.copy(index = index),
+            progress = updated.progress.copy(hintsUsed = state.progress.hintsUsed + 1),
         )
     }
 
@@ -117,11 +129,8 @@ object GameReducer {
     fun incrementMistakes(state: GameUiState, by: Int = 1): GameUiState =
         state.copy(progress = state.progress.copy(mistakes = state.progress.mistakes + by))
 
-    fun finish(state: GameUiState): GameUiState =
-        state.copy(progress = state.progress.copy(status = GameStatus.FINISHED))
-
-    fun fail(state: GameUiState): GameUiState =
-        state.copy(progress = state.progress.copy(status = GameStatus.FINISHED))
+    fun finish(state: GameUiState, outcome: GameOutcome): GameUiState =
+        state.copy(progress = state.progress.copy(status = GameStatus.FINISHED, outcome = outcome))
 
     fun setBusy(state: GameUiState, busy: Boolean): GameUiState =
         state.copy(progress = state.progress.copy(isBusy = busy))
