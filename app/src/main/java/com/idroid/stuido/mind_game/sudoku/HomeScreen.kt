@@ -47,11 +47,17 @@ internal fun HomeScreen(
     var spec by rememberSaveable { mutableStateOf(BoardSpec.CLASSIC) }
     var difficulty by rememberSaveable { mutableStateOf(Difficulty.MEDIUM) }
 
-    val availableDiff = remember(config, spec) { config.availableDifficulties(spec) }
+    val availableSpecs = remember(config) { BoardSpec.entries.filter(config::hasAnyDifficulty) }
+    val effectiveSpec = spec.takeIf(config::hasAnyDifficulty) ?: availableSpecs.firstOrNull()
+    val availableDiff = remember(config, effectiveSpec) {
+        effectiveSpec?.let(config::availableDifficulties).orEmpty()
+    }
+    val effectiveDifficulty = difficulty.takeIf { it in availableDiff }
+        ?: Difficulty.entries.firstOrNull { it in availableDiff }
 
     // 换规格后若原所选难度不可再选，则自动校正
-    if (availableDiff.isNotEmpty() && difficulty !in availableDiff) {
-        difficulty = availableDiff.first()
+    if (effectiveDifficulty != null && difficulty != effectiveDifficulty) {
+        difficulty = effectiveDifficulty
     }
 
     Column(
@@ -81,43 +87,50 @@ internal fun HomeScreen(
                     stringResource(R.string.board_x4) to BoardSpec.MINI,
                     stringResource(R.string.board_x6) to BoardSpec.MEDIUM,
                     stringResource(R.string.board_x9) to BoardSpec.CLASSIC,
-                ),
-                selected = spec,
+                ).filter { (_, boardSpec) -> boardSpec in availableSpecs },
+                selected = effectiveSpec ?: BoardSpec.MINI,
                 onSelect = { spec = it },
             )
         }
 
-        if (mode == GameMode.FREE) {
+        if (mode == GameMode.FREE && effectiveSpec != null) {
             SectionCard(stringResource(R.string.section_difficulty)) {
                 SingleChoiceChips(
                     labelsToValues = Difficulty.entries
                         .filter { it in availableDiff }
                         .map { it.name to it },
-                    selected = difficulty,
+                    selected = effectiveDifficulty ?: Difficulty.EASY,
                     onSelect = { difficulty = it },
                 )
             }
         } else {
-            val hardest = availableDiff.maxByOrNull { it.ordinal } ?: Difficulty.EASY
-            Text(
-                stringResource(R.string.home_daily_note, hardest),
-                style = MaterialTheme.typography.bodySmall,
-            )
+            if (mode == GameMode.DAILY) {
+                availableDiff.maxByOrNull { it.ordinal }?.let { hardest ->
+                    Text(
+                        stringResource(R.string.home_daily_note, hardest),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
         }
 
         Button(
             onClick = {
+                val selectedSpec = effectiveSpec
                 val finalDifficulty = when (mode) {
-                    GameMode.DAILY -> availableDiff.maxByOrNull { it.ordinal } ?: Difficulty.EASY
-                    GameMode.FREE -> difficulty
+                    GameMode.DAILY -> availableDiff.maxByOrNull { it.ordinal }
+                    GameMode.FREE -> difficulty.takeIf { it in availableDiff } ?: effectiveDifficulty
                 }
-                val seed = if (mode == GameMode.DAILY) {
-                    DailySeed.forToday() + gameConfig.sudoku.daily.seedSalt
-                } else {
-                    null
+                if (selectedSpec != null && finalDifficulty != null) {
+                    val seed = if (mode == GameMode.DAILY) {
+                        DailySeed.forToday() + gameConfig.sudoku.daily.seedSalt
+                    } else {
+                        null
+                    }
+                    onStart(mode, selectedSpec, finalDifficulty, seed)
                 }
-                onStart(mode, spec, finalDifficulty, seed)
             },
+            enabled = availableSpecs.isNotEmpty(),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(

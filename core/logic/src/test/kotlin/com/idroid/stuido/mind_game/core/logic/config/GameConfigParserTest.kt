@@ -83,6 +83,32 @@ class GameConfigParserTest {
     }
 
     @Test
+    fun `hole counts respect minimum clues for unique solutions`() {
+        val atLimit = parse(
+            """{"sudoku":{"generator":{"holes":{"mini":{"easy":12},"classic":{"expert":64}}}}}""",
+        ).toDifficultyConfig()
+        assertEquals(12, atLimit.holes[BoardSpec.MINI]?.get(Difficulty.EASY))
+        assertEquals(64, atLimit.holes[BoardSpec.CLASSIC]?.get(Difficulty.EXPERT))
+
+        val aboveLimit = parse(
+            """
+            {
+              "sudoku": {
+                "generator": {
+                  "holes": {
+                    "mini": { "easy": 13, "medium": 5 },
+                    "classic": { "hard": 65, "easy": 30 }
+                  }
+                }
+              }
+            }
+            """.trimIndent(),
+        ).toDifficultyConfig()
+        assertFalse(aboveLimit.isAvailable(BoardSpec.MINI, Difficulty.EASY))
+        assertFalse(aboveLimit.isAvailable(BoardSpec.CLASSIC, Difficulty.HARD))
+    }
+
+    @Test
     fun `all invalid holes use the default map`() {
         val config = parse(
             """{"sudoku":{"generator":{"holes":{"mini":{"easy":16},"huge":{"easy":3}}}}}""",
