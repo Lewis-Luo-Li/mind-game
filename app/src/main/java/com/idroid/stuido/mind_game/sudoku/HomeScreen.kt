@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.idroid.stuido.mind_game.R
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
-import com.idroid.stuido.mind_game.core.logic.config.DifficultyConfig
+import com.idroid.stuido.mind_game.core.logic.config.GameRemoteConfig
 import com.idroid.stuido.mind_game.feature.game.GameMode
 import java.time.LocalDate
 
@@ -37,10 +37,11 @@ import java.time.LocalDate
  */
 @Composable
 internal fun HomeScreen(
+    gameConfig: GameRemoteConfig,
     onOpenSettings: () -> Unit,
     onStart: (mode: GameMode, spec: BoardSpec, difficulty: Difficulty, seed: Long?) -> Unit,
 ) {
-    val config = remember { DifficultyConfig.default() }
+    val config = remember(gameConfig) { gameConfig.toDifficultyConfig() }
 
     var mode by rememberSaveable { mutableStateOf(GameMode.FREE) }
     var spec by rememberSaveable { mutableStateOf(BoardSpec.CLASSIC) }
@@ -110,7 +111,11 @@ internal fun HomeScreen(
                     GameMode.DAILY -> availableDiff.maxByOrNull { it.ordinal } ?: Difficulty.EASY
                     GameMode.FREE -> difficulty
                 }
-                val seed = if (mode == GameMode.DAILY) DailySeed.forToday() else null
+                val seed = if (mode == GameMode.DAILY) {
+                    DailySeed.forToday() + gameConfig.sudoku.daily.seedSalt
+                } else {
+                    null
+                }
                 onStart(mode, spec, finalDifficulty, seed)
             },
             modifier = Modifier.fillMaxWidth(),

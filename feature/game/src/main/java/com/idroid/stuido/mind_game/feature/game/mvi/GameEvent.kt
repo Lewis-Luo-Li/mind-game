@@ -22,6 +22,7 @@ sealed interface GameEvent {
         val spec: BoardSpec,
         val difficulty: Difficulty = Difficulty.EASY,
         val seed: Long? = null,
+        val maxMistakes: Int = 3,
     ) : GameEvent
 
     /** 重新开始当前对局（同参数再开一局）。 */

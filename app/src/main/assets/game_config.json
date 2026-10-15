@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "config_version": "2026-10-15.1",
+  "sudoku": {
+    "generator": {
+      "max_retry": 50,
+      "holes": {
+        "mini":    { "easy": 3,  "medium": 5,  "hard": 6 },
+        "medium":  { "easy": 10, "medium": 14, "hard": 18, "expert": 20 },
+        "classic": { "easy": 36, "medium": 42, "hard": 48, "expert": 55 }
+      }
+    },
+    "rules": {
+      "default": { "lives": 3, "hints": 3 },
+      "overrides": [ { "mode": "daily", "lives": 3, "hints": 3 } ]
+    },
+    "daily": { "enabled": true, "seed_salt": 0 }
+  },
+  "rewards": {
+    "extra_life": { "enabled": true, "amount": 1, "max_per_game": 2, "allow_in_daily": true },
+    "extra_hint": { "enabled": true, "amount": 1, "max_per_game": 3, "allow_in_daily": true }
+  },
+  "ads": { "enabled": false, "interstitial": { "enabled": false, "min_games_between": 3, "min_seconds_between": 180 } },
+  "features": { "onboarding_tour": true, "notes_auto_fill": false, "crossword": false, "zooduku": false }
+}

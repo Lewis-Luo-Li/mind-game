@@ -14,8 +14,12 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
+import com.idroid.stuido.mind_game.core.logic.config.DifficultyConfig
+import com.idroid.stuido.mind_game.core.logic.config.GameRemoteConfig
+import com.idroid.stuido.mind_game.config.GameConfigRepository
 import com.idroid.stuido.mind_game.feature.game.GameMode
 import com.idroid.stuido.mind_game.feature.game.ui.GameScreenRoute
 import com.idroid.stuido.mind_game.main.model.GameId
@@ -61,6 +65,10 @@ private fun decodeDest(value: String): Dest = when {
  */
 @Composable
 fun MindGameApp(themePrefs: ThemePrefs) {
+    val context = LocalContext.current
+    val gameConfig = remember { GameConfigRepository.fromAssets(context).config }
+    val difficultyConfig = remember(gameConfig) { gameConfig.toDifficultyConfig() }
+
     var playRequest by remember { mutableStateOf<PlayRequest?>(null) }
     var backStack by rememberSaveable(
         stateSaver = listSaver(
@@ -82,6 +90,8 @@ fun MindGameApp(themePrefs: ThemePrefs) {
             spec = req.spec,
             difficulty = req.difficulty,
             seed = req.seed,
+            difficultyConfig = difficultyConfig,
+            maxMistakes = req.rules.lives,
             sessionKey = "sudoku-game-${req.id}",
         )
         return
@@ -109,6 +119,7 @@ fun MindGameApp(themePrefs: ThemePrefs) {
 
             is Dest.GameDetail -> GameHost(
                 game = dest.game,
+                gameConfig = gameConfig,
                 onBack = ::pop,
                 onOpenSettings = { navigate(Dest.Settings) },
                 onStart = { mode, spec, difficulty, seed ->
@@ -118,6 +129,7 @@ fun MindGameApp(themePrefs: ThemePrefs) {
                         spec = spec,
                         difficulty = difficulty,
                         seed = seed,
+                        rules = gameConfig.rulesFor(mode.name.lowercase(), spec, difficulty),
                     )
                 },
             )
@@ -132,12 +144,14 @@ fun MindGameApp(themePrefs: ThemePrefs) {
 @Composable
 private fun GameHost(
     game: GameId,
+    gameConfig: GameRemoteConfig,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
     onStart: (GameMode, BoardSpec, Difficulty, Long?) -> Unit,
 ) {
     when (game) {
         GameId.SUDOKU -> HomeScreen(
+            gameConfig = gameConfig,
             onOpenSettings = onOpenSettings,
             onStart = onStart,
         )
