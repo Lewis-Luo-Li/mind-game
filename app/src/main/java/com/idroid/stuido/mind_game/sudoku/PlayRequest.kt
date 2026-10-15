@@ -2,6 +2,7 @@ package com.idroid.stuido.mind_game.sudoku
 
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
+import com.idroid.stuido.mind_game.core.logic.config.GameRules
 import com.idroid.stuido.mind_game.feature.game.GameMode
 
 /**
@@ -14,4 +15,5 @@ data class PlayRequest(
     val spec: BoardSpec,
     val difficulty: Difficulty,
     val seed: Long?,
+    val rules: GameRules,
 )

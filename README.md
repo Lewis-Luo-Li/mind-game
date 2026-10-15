@@ -85,7 +85,7 @@ Plugin: `mindgame.kotlin.library`. Full documentation: [`core/logic/docs/README.
 | `solver` | `SolverStrategy`, `BacktrackingSolver`, `SudokuSolver` | Backtracking solver for any box shape; `solve` returns one solution and `countSolutions(limit = 2)` is used for the uniqueness check. |
 | `generator` | `SudokuGenerator`, `RandomProvider` | Builds a random full board, then removes cells one by one, keeping a removal only if the puzzle still has a unique solution. Retries on a new board (up to 50 times) if the target hole count can't be reached. A seed is mixed as `seed * 10 + size`. |
 | `validator` | `PuzzleValidator`, `PuzzleValidationResult` | Classifies a puzzle as `VALID` (unique solution), `MULTIPLE_SOLUTIONS` or `NO_SOLUTION`. |
-| `config` | `BoardSpec`, `Difficulty`, `DifficultyConfig` | Board sizes (`MINI` 4×4 with 2×2 boxes, `MEDIUM` 6×6 with 3×2, `CLASSIC` 9×9 with 3×3) and the difficulty → hole-count table. |
+| `config` | `BoardSpec`, `Difficulty`, `DifficultyConfig`, `GameRemoteConfig`, `GameConfigParser`, `GameRules` | Board sizes, difficulty → hole-count mapping, and game configuration parsing and rules. |
 
 Default hole counts (`DifficultyConfig.default()`):
 
@@ -95,6 +95,10 @@ Default hole counts (`DifficultyConfig.default()`):
 | Medium | 5 | 14 | 42 |
 | Hard | 6 | 18 | 48 |
 | Expert | — | 20 | 55 |
+
+#### Game config
+
+`app/src/main/assets/game_config.json` is the bundled offline config for Sudoku hole counts, generator `max_retry`, lives and hints rules, and the daily `seed_salt`. Rewards, ads and feature flags are parsed but reserved for later phases. See the [game config schema and rollout plan](docs/game_config_json.md).
 
 ### `:feature:game` — Sudoku gameplay
 Plugins: `mindgame.android.library`, `mindgame.android.library.compose`

@@ -7,6 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
+import com.idroid.stuido.mind_game.core.logic.config.DifficultyConfig
+import com.idroid.stuido.mind_game.core.logic.generator.SudokuGenerator
 import com.idroid.stuido.mind_game.feature.game.GameMode
 import com.idroid.stuido.mind_game.feature.game.mvi.GameEvent
 import com.idroid.stuido.mind_game.feature.game.mvi.GameViewModel
@@ -27,16 +29,23 @@ fun GameScreenRoute(
     spec: BoardSpec = BoardSpec.CLASSIC,
     difficulty: Difficulty = Difficulty.EASY,
     seed: Long? = null,
+    difficultyConfig: DifficultyConfig = DifficultyConfig.default(),
+    maxMistakes: Int = 3,
     sessionKey: String = "default-session",
 ) {
     val vm: GameViewModel = viewModel(key = sessionKey) {
-        GameViewModel(gameFactory = GameFactory())
+        GameViewModel(
+            gameFactory = GameFactory(
+                generator = SudokuGenerator(maxRetry = difficultyConfig.maxRetry),
+                difficultyConfig = difficultyConfig,
+            ),
+        )
     }
     val state by vm.uiState.collectAsState()
 
     // 首次进入（本会话挂载）自动开局（生成 + 铺盘）；后续由 Restart / FinishPanel 驱动。
     LaunchedEffect(vm) {
-        vm.dispatch(GameEvent.NewGame(mode, spec, difficulty, seed))
+        vm.dispatch(GameEvent.NewGame(mode, spec, difficulty, seed, maxMistakes))
     }
 
     GameScreen(state = state, dispatch = vm::dispatch, onExit = onExit)

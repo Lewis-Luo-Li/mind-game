@@ -59,10 +59,12 @@ class GameViewModel(
     fun dispatch(event: GameEvent) {
         when (event) {
             is GameEvent.NewGame -> newGame(
-                event.mode, event.spec, event.difficulty, event.seed,
+                event.mode, event.spec, event.difficulty, event.seed, event.maxMistakes,
             )
 
-            GameEvent.Restart -> lastRequest?.let { cfg -> newGame(cfg.mode, cfg.spec, cfg.difficulty, cfg.seed) }
+            GameEvent.Restart -> lastRequest?.let { cfg ->
+                newGame(cfg.mode, cfg.spec, cfg.difficulty, cfg.seed, cfg.maxMistakes)
+            }
             GameEvent.Exit -> Unit // 退出由宿主（onExit）完成，不在此处理
 
             is GameEvent.SelectCell -> _uiState.update { GameReducer.selectCell(it, event.index) }
@@ -82,9 +84,21 @@ class GameViewModel(
 
     // ---------------------------------------------------------------- 启动 / 重开
 
-    private fun newGame(mode: GameMode, spec: BoardSpec, difficulty: Difficulty, seed: Long?) {
+    private fun newGame(
+        mode: GameMode,
+        spec: BoardSpec,
+        difficulty: Difficulty,
+        seed: Long?,
+        maxMistakes: Int,
+    ) {
         if (_uiState.value.progress.isBusy) return
-        val config = GameConfig(mode = mode, spec = spec, difficulty = difficulty, seed = seed)
+        val config = GameConfig(
+            mode = mode,
+            spec = spec,
+            difficulty = difficulty,
+            seed = seed,
+            maxMistakes = maxMistakes,
+        )
         lastRequest = config
         _uiState.update { GameReducer.setBusy(GameReducer.setGameConfig(it, config), true) }
 
