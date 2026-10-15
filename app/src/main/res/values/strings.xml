@@ -3,7 +3,7 @@
     <string name="app_name">mind-game</string>
 
     <!-- Home 主菜单 -->
-    <string name="home_title">Mind Game · Sudoku</string>
+    <string name="home_title">Mind Game</string>
     <string name="home_subtitle">Pick a mode and a board size to start a new game.</string>
     <string name="section_mode">Mode</string>
     <string name="home_free">Free</string>

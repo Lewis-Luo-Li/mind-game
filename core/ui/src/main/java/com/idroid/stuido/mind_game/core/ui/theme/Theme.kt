@@ -13,6 +13,9 @@ import com.idroid.stuido.mind_game.core.ui.primitives.MindGameTypography
 import com.idroid.stuido.mind_game.core.ui.primitives.defaultFontSize
 import com.idroid.stuido.mind_game.core.ui.primitives.defaultMindGameFontFamily
 import com.idroid.stuido.mind_game.core.ui.primitives.defaultTypography
+import com.idroid.stuido.mind_game.core.ui.primitives.iconset.IconSet
+import com.idroid.stuido.mind_game.core.ui.primitives.iconset.LocalIconSet
+import com.idroid.stuido.mind_game.core.ui.primitives.iconset.rememberDefaultIconSet
 import com.idroid.stuido.mind_game.core.ui.primitives.schemeFor
 
 /**
@@ -35,6 +38,7 @@ fun MindgameTheme(
     fontSize: MindGameFontSize = defaultFontSize,
     fontFamily: MindGameFontFamily = defaultMindGameFontFamily,
     typography: MindGameTypography = defaultTypography,
+    iconSet: IconSet = rememberDefaultIconSet(),
     content: @Composable () -> Unit,
 ) {
     val dark: Boolean = when (mode) {
@@ -45,7 +49,8 @@ fun MindgameTheme(
     CompositionLocalProvider(
         LocalFontSize provides fontSize,
         LocalMindGameFontFamily provides fontFamily,
-        LocalTypography provides typography
+        LocalTypography provides typography,
+        LocalIconSet provides iconSet
     ) {
         MaterialTheme(
             colorScheme = schemeFor(scheme, dark),
@@ -58,4 +63,8 @@ object Theme {
     val typography: MindGameTypography
         @Composable
         get() = LocalTypography.current
+
+    val icons: IconSet
+        @Composable
+        get() = LocalIconSet.current
 }
