@@ -3,6 +3,7 @@ package com.idroid.stuido.mind_game.feature.game.mvi
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
 import com.idroid.stuido.mind_game.feature.game.GameMode
+import com.idroid.stuido.mind_game.feature.game.GameOutcome
 import com.idroid.stuido.mind_game.feature.game.GameStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -19,6 +20,7 @@ class GameUiStateTest {
         assertEquals(9, cfg.size)
         assertEquals(Difficulty.EASY, cfg.difficulty)
         assertEquals(3, cfg.maxMistakes)
+        assertEquals(3, cfg.maxHints)
         assertEquals(null, cfg.seed)
     }
 
@@ -65,5 +67,25 @@ class GameUiStateTest {
         val s = GameUiState()
         assertEquals(GameStatus.IDLE, s.progress.status)
         assertEquals(BoardCells.EMPTY, s.board)
+    }
+
+    @Test
+    fun `hintsLeft 和 livesLeft 根据配置与进度计算且不小于零`() {
+        val state = GameUiState(
+            config = GameConfig(maxMistakes = 3, maxHints = 2),
+            progress = GameProgress(
+                mistakes = 1,
+                hintsUsed = 2,
+                outcome = GameOutcome.REVEALED,
+            ),
+        )
+        assertEquals(0, state.hintsLeft)
+        assertEquals(2, state.livesLeft)
+
+        val exhausted = state.copy(
+            progress = state.progress.copy(mistakes = 5, hintsUsed = 4),
+        )
+        assertEquals(0, exhausted.hintsLeft)
+        assertEquals(0, exhausted.livesLeft)
     }
 }

@@ -6,25 +6,25 @@ UI reference: `docs/sudoku_ui.jpeg`. Scope: `:feature:game`, plus small changes 
 
 | Area | Current behaviour | Gap |
 |---|---|---|
-| Win | `inputNumber` / `requestHint` → `InputValidator.isComplete` → `finishAsSuccess()` → `FINISHED` + `FinishPanel` "🎉 Solved!" | `victory` is guessed from `mistakes < maxMistakes`. `RequestSolve` also counts as a win. `PuzzleCompleted` effect is never collected |
-| Lose | Every wrong digit → `registerMistake()`. At `maxMistakes` → `fail()` → `FinishPanel` "❌ Challenge failed" | `maxMistakes = 3` is hard-coded in `GameConfig`. `newGame()` never passes it, so it can't be configured. "Play Again" regenerates, so Free mode gets a **new** puzzle and the player can't retry the same one |
-| Hints | `requestHint()` fills the selected cell from `solution` | No counter or limit. A hint on an already-correct cell is still "spent". `HintFilled` effect is never sent |
+| Win | `inputNumber` / `requestHint` → `InputValidator.isComplete` → `finishAsSuccess()` → `SOLVED` + `FinishPanel` | `GameOutcome` now distinguishes solved, failed, and revealed games; `RequestSolve` is not a win |
+| Lose | Every wrong digit → `registerMistake()`. At configured lives → `FAILED` + `FinishPanel` | Lives and hints come from bundled `game_config.json` rules. Retry same puzzle reuses the stored seed; Restart starts a new puzzle with the same parameters |
+| Hints | `requestHint()` fills the selected unresolved cell or first unresolved cell, and records `HintFilled` | Hints have a configured budget; exhausted requests show a message and do not change state |
 | Notes | `ToggleNoteMode`, `ToggleNote`, `NotesGrid` in `CellView`. Placing a value clears that cell's notes | Placing a value doesn't clean up neighbouring notes. No highlight for notes matching the selected digit. No undo |
-| Effects | `GameViewModel.effect` (Channel) | `GameScreenRoute` never collects it, so no message is ever shown |
+| Effects | `GameViewModel.effect` (Channel) | `GameScreenRoute` collects messages and hint feedback as snackbars; haptics and cell flashes remain future work |
 
 ## 1. State and rules (`:feature:game`)
 
 ```kotlin
-data class GameConfig(..., val maxMistakes: Int = 3, val maxHints: Int = 3)          // both configurable
-enum class GameOutcome { NONE, SOLVED, REVEALED, FAILED }
-data class GameProgress(..., val hintsUsed: Int = 0, val outcome: GameOutcome = GameOutcome.NONE) {
-    val livesLeft get(): Int   // maxMistakes - mistakes (computed from config in the UI layer)
-}
+data class GameConfig(..., val maxMistakes: Int = 3, val maxHints: Int = 3)
+enum class GameOutcome { SOLVED, FAILED, REVEALED }
+data class GameProgress(..., val hintsUsed: Int = 0, val outcome: GameOutcome? = null)
+GameUiState.hintsLeft // maxHints - hintsUsed, clamped to zero
+GameUiState.livesLeft // maxMistakes - mistakes, clamped to zero
 GameEvent.NewGame(mode, spec, difficulty, seed, maxMistakes = 3, maxHints = 3)
-GameEvent.RetrySamePuzzle   // new: reset to the stored GameSeed; lives, hints and timer reset
-GameEvent.Restart           // existing: new puzzle with the same settings ("New game")
+GameEvent.RetrySamePuzzle   // reset to the stored GameSeed; lives, hints and timer reset
+GameEvent.Restart           // new puzzle with the same parameters ("New game")
 GameEvent.Undo              // new (see §4)
-GameEffect.HintFilled(index, value)  // now actually sent
+GameEffect.HintFilled(index, value)
 ```
 
 - `GameReducer.finish(state, outcome)` replaces `finish` / `fail`. `FinishPanel` reads `outcome` instead of guessing.
@@ -33,26 +33,26 @@ GameEffect.HintFilled(index, value)  // now actually sent
 
 ### 1.1 Success (requirement 1)
 - Last correct digit, or a hint that completes the board → `outcome = SOLVED`, `FINISHED`, `PuzzleCompleted` effect.
-- **Success panel**: "Puzzle solved!", spec · difficulty, time `mm:ss`, mistakes `n/max`, hints used `n/max`. Buttons: **New game** (`Restart`) and **Exit**.
+- **Success panel**: "Solved!", time `mm:ss`, mistakes `n/max`, hints used `n/max`. Buttons: **New game** (`Restart`) and **Exit**.
 - `RequestSolve` → `outcome = REVEALED` and a "Solution shown" panel, not a success *(decision D1)*.
 
 ### 1.2 Out of lives → retry (requirement 2)
 - Lives = `maxMistakes - mistakes`. Default 3, shown in the status row as `Errors: 1/3`, as in the mockup.
 - When lives reach 0 → `outcome = FAILED`, board locked, timer stopped, `GameOver` effect.
-- **Retry panel**: "Out of lives", correct cells filled / total, time. Buttons: **Retry** (same puzzle, `RetrySamePuzzle`), **New game**, **Exit** *(decision D2)*.
-- **Configurable**: lives and hints come from the game config JSON (`docs/game_config_json.md`, `rules` section). Path: `GameConfigRepository` → `PlayRequest.rules` → `GameScreenRoute` → `NewGame(rules = …)` *(decision D3)*. "Watch an ad for +1 life / +1 hint" is phase P6.
+- **Retry panel**: "Out of lives", time, mistakes and hints. Buttons: **Retry same puzzle** (`RetrySamePuzzle`), **New game**, **Exit** *(decision D2)*.
+- **Configurable**: lives and hints come from the game config JSON (`docs/game_config_json.md`, `rules` section). Path: `GameConfigRepository` → `PlayRequest.rules` → `GameScreenRoute` → `NewGame(maxMistakes = …, maxHints = …)` *(decision D3)*. "Watch an ad for +1 life / +1 hint" is phase P6.
 
 ### 1.3 Hint counter (requirement 3)
 `requestHint()` rules:
 1. `hintsLeft == 0` → `ShowMessage("No hints left")`, no state change. Button shows disabled `0`.
-2. No cell selected → pick the first empty or wrong non-given cell (row-major) and select it, so a hint always has a target.
-3. Cell already correct → no-op, **no hint spent**.
-4. Otherwise fill `solution[index]`, `hintsUsed++`, clear that cell's notes and peers' matching notes, send `HintFilled(index, value)`. The UI briefly flashes the cell. If the board is now complete → success.
+2. Use the selected cell if it is unresolved and not given; otherwise pick the first unresolved non-given cell in row-major order.
+3. If no unresolved cell exists, return without spending a hint.
+4. Fill `solution[index]`, `hintsUsed++`, clear that cell's notes, and send `HintFilled(index, value)`. If the board is now complete → success.
 - Hints never cost a life.
 - Shown in two places, both counting down: `Hints: 2/3` in the status row, and a badge on the Hint button.
 
 ### 1.4 Show effects
-`GameScreenRoute`: `LaunchedEffect(vm) { vm.effect.collect { … } }` → `SnackbarHostState` on the `Scaffold` for `ShowMessage` / `NewGameFailed`, short haptic on a mistake, cell flash for `HintFilled`. This also covers the empty screen shown today when generation fails.
+`GameScreenRoute`: `LaunchedEffect(vm) { vm.effect.collect { … } }` → `SnackbarHostState` on the `Scaffold` for `ShowMessage`, `NewGameFailed`, and `HintFilled`. Terminal effects are represented by the outcome panel. This also covers the empty screen shown today when generation fails.
 
 ## 2. UI to match `sudoku_ui.jpeg`
 

@@ -26,6 +26,8 @@ fun GameTopBar(
     timerSeconds: Int,
     mistakes: Int,
     maxMistakes: Int,
+    hintsLeft: Int,
+    maxHints: Int,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -45,9 +47,10 @@ fun GameTopBar(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(stringResource(R.string.game_topbar_time, minutes, seconds), style = MaterialTheme.typography.bodySmall)
                     Text(stringResource(R.string.game_topbar_mistakes, mistakes, maxMistakes), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.game_topbar_hints, hintsLeft, maxHints), style = MaterialTheme.typography.bodySmall)
                 }
             }
             Spacer(Modifier.width(4.dp))

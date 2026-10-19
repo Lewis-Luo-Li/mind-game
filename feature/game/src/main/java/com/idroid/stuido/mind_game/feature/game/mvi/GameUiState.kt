@@ -3,6 +3,7 @@ package com.idroid.stuido.mind_game.feature.game.mvi
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
 import com.idroid.stuido.mind_game.feature.game.GameMode
+import com.idroid.stuido.mind_game.feature.game.GameOutcome
 import com.idroid.stuido.mind_game.feature.game.GameStatus
 
 /**
@@ -29,7 +30,10 @@ data class GameUiState(
     val board: BoardCells = BoardCells.EMPTY,
     val selection: Selection = Selection(),
     val progress: GameProgress = GameProgress(),
-)
+) {
+    val hintsLeft: Int get() = (config.maxHints - progress.hintsUsed).coerceAtLeast(0)
+    val livesLeft: Int get() = (config.maxMistakes - progress.mistakes).coerceAtLeast(0)
+}
 
 /**
  * 对局静态配置（开局后一般在整局内不变）。
@@ -40,6 +44,7 @@ data class GameConfig(
     val difficulty: Difficulty = Difficulty.EASY,
     val seed: Long? = null,
     val maxMistakes: Int = 3,
+    val maxHints: Int = 3,
 ) {
     val size: Int get() = spec.size
 }
@@ -93,6 +98,8 @@ data class GameProgress(
     val mistakes: Int = 0,
     val timerSeconds: Int = 0,
     val isBusy: Boolean = false,
+    val hintsUsed: Int = 0,
+    val outcome: GameOutcome? = null,
 ) {
     val isRunning: Boolean get() = status == GameStatus.RUNNING
     val isFinished: Boolean get() = status == GameStatus.FINISHED
