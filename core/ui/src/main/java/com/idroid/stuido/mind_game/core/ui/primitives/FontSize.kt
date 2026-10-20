@@ -12,4 +12,14 @@ data class MindGameFontSize(
 
 val defaultFontSize = MindGameFontSize()
 
+/** 窄屏紧凑字号：window width < [COMPACT_TYPO_WIDTH_DP] 时由 MindgameTheme 自动选用。 */
+val compactFontSize = MindGameFontSize(
+    body = 14.sp,
+    label = 10.sp,
+    title = 19.sp,
+)
+
+/** 启用紧凑字号的可用宽度阈值（dp）。 */
+const val COMPACT_TYPO_WIDTH_DP = 360
+
 internal val LocalFontSize = staticCompositionLocalOf { defaultFontSize }
