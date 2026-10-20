@@ -29,6 +29,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
+import com.idroid.stuido.mind_game.core.ui.components.keypad.NumberKeypad
+import com.idroid.stuido.mind_game.core.ui.components.keypad.NumberKeypadConfig
+import com.idroid.stuido.mind_game.core.ui.components.keypad.NumberKeypadStyle
+import com.idroid.stuido.mind_game.core.ui.components.keypad.NumberKeypadUiContent
 import com.idroid.stuido.mind_game.core.ui.theme.MindgameTheme
 import com.idroid.stuido.mind_game.feature.game.GameMode
 import com.idroid.stuido.mind_game.feature.game.GameOutcome
@@ -91,36 +95,64 @@ fun GameScreen(
                 .fillMaxSize()
                 .padding(inner),
         ) {
+            val colorScheme = MaterialTheme.colorScheme
+            val keypadStyle = NumberKeypadStyle(
+                surfaceColor = colorScheme.surfaceVariant,
+                disabledSurfaceColor = colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                digitColor = colorScheme.onSurface,
+                disabledContentColor = colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                badgeBackgroundColor = colorScheme.primary,
+                badgeContentColor = colorScheme.onPrimary,
+                keySize = 36.dp,
+                digitStyle = MaterialTheme.typography.titleMedium,
+                badgeStyle = MaterialTheme.typography.labelSmall,
+            )
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 6.dp),
+                modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                GameTopBar(
-                    title = describeTitle(state),
-                    timerSeconds = state.progress.timerSeconds,
-                    mistakes = state.progress.mistakes,
-                    maxMistakes = state.config.maxMistakes,
-                    hintsLeft = state.hintsLeft,
-                    maxHints = state.config.maxHints,
-                    onExit = onExit,
-                    onTimerClick = { dispatch(GameEvent.TogglePause) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    GameTopBar(
+                        title = describeTitle(state),
+                        timerSeconds = state.progress.timerSeconds,
+                        mistakes = state.progress.mistakes,
+                        maxMistakes = state.config.maxMistakes,
+                        hintsLeft = state.hintsLeft,
+                        maxHints = state.config.maxHints,
+                        onExit = onExit,
+                        onTimerClick = { dispatch(GameEvent.TogglePause) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
 
-                when {
-                    state.progress.isBusy -> BusyContent()
-                    state.board.size == 0 -> IdleContent()
-                    else -> {
-                        GameBoard(
-                            board = state.board,
-                            selectedIndex = state.selection.index,
-                            checkFlags = state.selection.conflicts,
-                            onCellClick = { dispatch(GameEvent.SelectCell(it)) },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                    when {
+                        state.progress.isBusy -> BusyContent()
+                        state.board.size == 0 -> IdleContent()
+                        else -> {
+                            GameBoard(
+                                board = state.board,
+                                selectedIndex = state.selection.index,
+                                checkFlags = state.selection.conflicts,
+                                onCellClick = { dispatch(GameEvent.SelectCell(it)) },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+
+                // 底部固定区（mockup 的 thumb-easy zone）：工具行 + 数字键盘，不随棋盘滚动。
+                if (!state.progress.isBusy && state.board.size > 0) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 6.dp),
+                    ) {
                         Spacer(Modifier.height(8.dp))
                         GameToolBar(
                             canUndo = state.canUndo && state.progress.isRunning,
@@ -134,10 +166,17 @@ fun GameScreen(
                             onHint = { dispatch(GameEvent.RequestHint) },
                             onSolve = { showSolveDialog = true },
                         )
-                        NumberPad(
-                            size = state.board.size,
-                            selectedGiven = state.selection.index?.let { it in state.board.givens } ?: true,
-                            onDigit = ::pressDigit,
+                        NumberKeypad(
+                            uiContent = NumberKeypadUiContent(
+                                digits = state.board.size,
+                                remaining = state.board.remainingCounts(),
+                                onDigit = ::pressDigit,
+                            ),
+                            uiConfig = NumberKeypadConfig(
+                                enabled = state.selection.index?.let { it !in state.board.givens } ?: false,
+                            ),
+                            uiStyle = keypadStyle,
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
                 }

@@ -78,6 +78,21 @@ data class BoardCells(
 ) {
     val totalCells: Int get() = size * size
 
+    /**
+     * 各数字剩余可填次数：`size - 已放对该数字的格数`，索引 0..size-1 对应数字 1..size。
+     * 仅"放对"（值与终盘一致）才消耗配额，填错不消耗；givens 与提示填入同样消耗。
+     */
+    fun remainingCounts(): List<Int> {
+        if (size <= 0) return emptyList()
+        val placed = IntArray(size + 1)
+        values.forEachIndexed { index, value ->
+            if (value in 1..size && index < solution.size && value == solution[index]) {
+                placed[value]++
+            }
+        }
+        return List(size) { digit -> size - placed[digit + 1] }
+    }
+
     companion object {
         val EMPTY = BoardCells(
             size = 0,
