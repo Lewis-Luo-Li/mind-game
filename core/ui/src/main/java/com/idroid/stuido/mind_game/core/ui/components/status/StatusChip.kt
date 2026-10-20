@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
+import com.idroid.stuido.mind_game.core.ui.components.text.BaseText
+import com.idroid.stuido.mind_game.core.ui.components.text.TextConfig
 import com.idroid.stuido.mind_game.core.ui.util.isHidden
 
 /**
@@ -47,22 +49,20 @@ fun StatusChip(
             )
             Spacer(Modifier.width(uiStyle.spacing))
             // 文本限宽并单行省略：大字号/窄屏下项内内容不外溢。
-            Text(
-                text = uiContent.text,
+            BaseText(
+                text = AnnotatedString(uiContent.text),
                 color = textColor,
                 style = uiStyle.textStyle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                config = TextConfig(maxLine = 1, overflow = TextOverflow.Ellipsis),
                 modifier = Modifier.weight(1f, fill = false),
             )
             if (uiContent.secondaryText != null) {
                 Spacer(Modifier.width(uiStyle.spacing))
-                Text(
-                    text = uiContent.secondaryText,
+                BaseText(
+                    text = AnnotatedString(uiContent.secondaryText),
                     color = textColor,
                     style = uiStyle.secondaryTextStyle,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    config = TextConfig(maxLine = 1, overflow = TextOverflow.Ellipsis),
                     modifier = Modifier.weight(1f, fill = false),
                 )
             }

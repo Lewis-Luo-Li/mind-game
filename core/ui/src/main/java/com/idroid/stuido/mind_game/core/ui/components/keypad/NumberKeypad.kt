@@ -10,12 +10,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.idroid.stuido.mind_game.core.ui.components.text.BaseText
 import com.idroid.stuido.mind_game.core.ui.util.isHidden
 
 /**
@@ -107,8 +108,8 @@ private fun KeyButton(
                 onClick = onClick,
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = digit.toString(),
+                    BaseText(
+                        text = AnnotatedString(digit.toString()),
                         color = if (enabled) uiStyle.digitColor else uiStyle.disabledContentColor,
                         style = uiStyle.digitStyle,
                     )
@@ -122,8 +123,8 @@ private fun KeyButton(
                 shape = RoundedCornerShape(4.dp),
                 color = if (enabled) uiStyle.badgeBackgroundColor else uiStyle.disabledSurfaceColor,
             ) {
-                Text(
-                    text = remaining.toString(),
+                BaseText(
+                    text = AnnotatedString(remaining.toString()),
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
                     color = if (enabled) uiStyle.badgeContentColor else uiStyle.disabledContentColor,
                     style = uiStyle.badgeStyle,
