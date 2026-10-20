@@ -4,41 +4,59 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.idroid.stuido.mind_game.feature.game.GameStatus
+import com.idroid.stuido.mind_game.core.ui.components.button.LabeledCircleButton
+import com.idroid.stuido.mind_game.core.ui.components.button.LabeledCircleButtonConfig
+import com.idroid.stuido.mind_game.core.ui.components.button.LabeledCircleButtonStyle
+import com.idroid.stuido.mind_game.core.ui.components.button.LabeledCircleButtonUiContent
+import com.idroid.stuido.mind_game.core.ui.theme.Theme
 import com.idroid.stuido.mind_game.feature.game.R
-import com.idroid.stuido.mind_game.feature.game.mvi.InputMode
 
 /**
- * 底部第二节：快捷工具行（笔记 / 橡皮 / 提示 / 判错 / 求解 / 暂停）。
- * 一律以回调上抛，由宿主派发 MVI 事件。
+ * 底部第二节：快捷工具行（Undo / Notes / Erase / Hint），对齐 docs/sudoku_ui.jpeg。
+ * 圆形图标钮 + 文字标签，均匀排开；Check 已移除、Pause 改为点击计时器（D4）。
+ * Solve 仅在 debug（showDebugSolve）显示。一律以回调上抛，由宿主派发 MVI 事件。
  */
 @Composable
 fun GameToolBar(
+    canUndo: Boolean,
     noteMode: Boolean,
-    isPaused: Boolean,
-    canAct: Boolean,
+    canErase: Boolean,
+    hintsLeft: Int,
+    showDebugSolve: Boolean,
+    onUndo: () -> Unit,
     onNoteMode: () -> Unit,
     onErase: () -> Unit,
     onHint: () -> Unit,
-    onCheck: () -> Unit,
     onSolve: () -> Unit,
-    onPause: () -> Unit,
-    hintsLeft: Int,
-    showDebugSolve: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val notesLabel = if (noteMode) stringResource(R.string.tool_notes_active) else stringResource(R.string.tool_notes)
-    val pauseLabel = if (isPaused) stringResource(R.string.action_resume) else stringResource(R.string.action_pause)
+    val colorScheme = MaterialTheme.colorScheme
+    val buttonStyle = LabeledCircleButtonStyle(
+        shape = CircleShape,
+        surfaceColor = colorScheme.surfaceVariant,
+        activeSurfaceColor = colorScheme.primaryContainer,
+        activeBorderColor = colorScheme.primary,
+        disabledSurfaceColor = colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        iconTintColor = colorScheme.onSurfaceVariant,
+        labelColor = colorScheme.onSurface,
+        disabledContentColor = colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+        badgeBackgroundColor = colorScheme.primary,
+        badgeContentColor = colorScheme.onPrimary,
+        surfaceSize = 48.dp,
+        iconSize = 24.dp,
+        labelStyle = MaterialTheme.typography.labelMedium,
+        badgeStyle = MaterialTheme.typography.labelSmall,
+    )
 
     Surface(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -46,30 +64,55 @@ fun GameToolBar(
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            ToolButton(label = notesLabel, enabled = true) { onNoteMode() }
-            ToolButton(label = stringResource(R.string.tool_erase), enabled = canAct) { onErase() }
-            ToolButton(
-                label = stringResource(R.string.tool_hint_count, hintsLeft),
-                enabled = hintsLeft > 0,
-            ) { onHint() }
-            ToolButton(label = stringResource(R.string.tool_check), enabled = canAct) { onCheck() }
+            LabeledCircleButton(
+                uiContent = LabeledCircleButtonUiContent(
+                    icon = Theme.icons.undo,
+                    contentDescription = stringResource(R.string.tool_undo),
+                    label = stringResource(R.string.tool_undo),
+                    onClick = onUndo,
+                ),
+                uiConfig = LabeledCircleButtonConfig(enabled = canUndo),
+                uiStyle = buttonStyle,
+            )
+            LabeledCircleButton(
+                uiContent = LabeledCircleButtonUiContent(
+                    icon = Theme.icons.notes,
+                    contentDescription = stringResource(R.string.tool_notes),
+                    label = stringResource(R.string.tool_notes),
+                    badge = if (noteMode) stringResource(R.string.tool_badge_on) else null,
+                    onClick = onNoteMode,
+                ),
+                uiConfig = LabeledCircleButtonConfig(active = noteMode),
+                uiStyle = buttonStyle,
+            )
+            LabeledCircleButton(
+                uiContent = LabeledCircleButtonUiContent(
+                    icon = Theme.icons.erase,
+                    contentDescription = stringResource(R.string.tool_erase),
+                    label = stringResource(R.string.tool_erase),
+                    onClick = onErase,
+                ),
+                uiConfig = LabeledCircleButtonConfig(enabled = canErase),
+                uiStyle = buttonStyle,
+            )
+            LabeledCircleButton(
+                uiContent = LabeledCircleButtonUiContent(
+                    icon = Theme.icons.hint,
+                    contentDescription = stringResource(R.string.tool_hint),
+                    label = stringResource(R.string.tool_hint),
+                    badge = hintsLeft.toString(),
+                    onClick = onHint,
+                ),
+                uiConfig = LabeledCircleButtonConfig(enabled = hintsLeft > 0),
+                uiStyle = buttonStyle,
+            )
             if (showDebugSolve) {
-                ToolButton(label = stringResource(R.string.tool_solve), enabled = canAct) { onSolve() }
+                TextButton(onClick = onSolve) {
+                    Text(stringResource(R.string.tool_solve))
+                }
             }
-            ToolButton(label = pauseLabel, enabled = true) { onPause() }
         }
-    }
-}
-
-@Composable
-private fun ToolButton(label: String, enabled: Boolean, onClick: () -> Unit) {
-    FilledTonalButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier.heightIn(min = 34.dp),
-    ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
     }
 }

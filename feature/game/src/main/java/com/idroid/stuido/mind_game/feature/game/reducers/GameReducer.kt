@@ -6,6 +6,7 @@ import com.idroid.stuido.mind_game.feature.game.engine.GameSeed
 import com.idroid.stuido.mind_game.feature.game.mvi.BoardCells
 import com.idroid.stuido.mind_game.feature.game.mvi.GameConfig
 import com.idroid.stuido.mind_game.feature.game.mvi.GameProgress
+import com.idroid.stuido.mind_game.feature.game.mvi.GameSnapshot
 import com.idroid.stuido.mind_game.feature.game.mvi.GameUiState
 import com.idroid.stuido.mind_game.feature.game.mvi.InputMode
 import com.idroid.stuido.mind_game.feature.game.mvi.Selection
@@ -36,6 +37,7 @@ object GameReducer {
                 hintsUsed = 0,
                 outcome = null,
             ),
+            history = emptyList(),
         )
     }
 
@@ -64,10 +66,11 @@ object GameReducer {
             value == 0 -> board.notes - index
             else -> board.notes + (index to emptySet())
         }
-        return state.copy(
+        val updated = state.copy(
             board = board.copy(values = values, notes = notes),
             selection = state.selection.copy(index = index, conflicts = emptySet()),
         )
+        return updated.recordHistory(state)
     }
 
     fun useHint(state: GameUiState, index: Int, value: Int): GameUiState {
@@ -87,13 +90,24 @@ object GameReducer {
         val existing = board.notes[index].orEmpty()
         val updated = if (value in existing) existing - value else existing + value
         val notes = board.notes + (index to updated)
-        return state.copy(
+        val next = state.copy(
             board = board.copy(notes = notes),
             selection = state.selection.copy(index = index, conflicts = emptySet()),
         )
+        return next.recordHistory(state)
     }
 
     fun erase(state: GameUiState, index: Int): GameUiState = inputNumber(state, index, 0)
+
+    /** 撤销：弹出最近一份快照，恢复盘面与选中；不回滚错误 / 计时 / 提示 / outcome。 */
+    fun undo(state: GameUiState): GameUiState {
+        val snapshot = state.history.lastOrNull() ?: return state
+        return state.copy(
+            board = snapshot.board,
+            selection = snapshot.selection,
+            history = state.history.dropLast(1),
+        )
+    }
 
     /** 单步/自动求解：全盘铺满终盘、清笔记，并将选中态归零。 */
     fun revealSolution(state: GameUiState): GameUiState {
@@ -135,6 +149,22 @@ object GameReducer {
     fun setBusy(state: GameUiState, busy: Boolean): GameUiState =
         state.copy(progress = state.progress.copy(isBusy = busy))
 }
+
+/** 撤销历史上限：超出时丢弃最旧快照。 */
+private const val MAX_HISTORY = 100
+
+/**
+ * 仅当盘面或选中态相对 [previous] 真正变化时，才把变更前快照压入历史。
+ */
+private fun GameUiState.recordHistory(previous: GameUiState): GameUiState =
+    if (board == previous.board && selection == previous.selection) {
+        this
+    } else {
+        copy(
+            history = (previous.history + GameSnapshot(previous.board, previous.selection))
+                .takeLast(MAX_HISTORY),
+        )
+    }
 
 private fun BoardCells.isMutable(index: Int): Boolean =
     index in values.indices && index !in givens

@@ -281,4 +281,24 @@ class GameViewModelTest {
         vm.dispatch(GameEvent.RequestSolve)
         assertEquals(finished, vm.uiState.value)
     }
+
+    @Test
+    fun `undo reverts the last input and is ignored after finish`() = runGameTest {
+        val vm = newViewModel()
+        startGame(vm)
+
+        val board = vm.uiState.value.board
+        val index = board.values.indices.first { it !in board.givens }
+        vm.dispatch(GameEvent.InputNumber(index, board.solution[index]))
+        assertTrue(vm.uiState.value.canUndo)
+
+        vm.dispatch(GameEvent.Undo)
+        assertEquals(0, vm.uiState.value.board.values[index])
+        assertFalse(vm.uiState.value.canUndo)
+
+        vm.dispatch(GameEvent.RequestSolve)
+        val finished = vm.uiState.value
+        vm.dispatch(GameEvent.Undo)
+        assertEquals(finished, vm.uiState.value)
+    }
 }

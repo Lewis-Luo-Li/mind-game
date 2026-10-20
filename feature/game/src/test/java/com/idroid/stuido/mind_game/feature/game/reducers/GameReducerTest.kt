@@ -305,6 +305,107 @@ class GameReducerTest {
         assertEquals(s.board.givens, GameReducer.revealSolution(s).board.givens)
     }
 
+    // 撤销
+    @Test
+    fun `undo 恢复最近一次填入的数字`() {
+        var s = startedState()
+        s = GameReducer.inputNumber(s, 12, 2)
+        assertTrue(s.canUndo)
+        val undone = GameReducer.undo(s)
+        assertEquals(0, undone.board.values[12])
+        assertFalse(undone.canUndo)
+    }
+
+    @Test
+    fun `undo 恢复笔记变更`() {
+        var s = startedState()
+        s = GameReducer.toggleNote(s, 12, 2)
+        val undone = GameReducer.undo(s)
+        assertTrue(undone.board.notes.getOrDefault(12, emptySet()).isEmpty())
+    }
+
+    @Test
+    fun `undo 恢复擦除前的内容与笔记`() {
+        var s = startedState()
+        s = GameReducer.toggleNote(s, 12, 2)
+        s = GameReducer.inputNumber(s, 12, 3)
+        val beforeErase = s.board
+        s = GameReducer.erase(s, 12)
+        assertEquals(0, s.board.values[12])
+        val undone = GameReducer.undo(s)
+        assertEquals(beforeErase, undone.board)
+    }
+
+    @Test
+    fun `undo 空历史是无操作`() {
+        val s = startedState()
+        assertFalse(s.canUndo)
+        assertEquals(s, GameReducer.undo(s))
+    }
+
+    @Test
+    fun `undo 连续弹出按后进先出`() {
+        var s = startedState()
+        s = GameReducer.inputNumber(s, 12, 2)
+        s = GameReducer.inputNumber(s, 13, 3)
+        s = GameReducer.undo(s)
+        assertEquals(0, s.board.values[13])
+        assertEquals(2, s.board.values[12])
+        s = GameReducer.undo(s)
+        assertEquals(0, s.board.values[12])
+        assertFalse(s.canUndo)
+    }
+
+    @Test
+    fun `undo 不回滚错误计时与提示次数`() {
+        var s = GameReducer.useHint(startedState(), 12, solution[12])
+        s = s.copy(progress = s.progress.copy(mistakes = 2, timerSeconds = 99))
+        val undone = GameReducer.undo(s)
+        assertEquals(0, undone.board.values[12])
+        assertEquals(2, undone.progress.mistakes)
+        assertEquals(99, undone.progress.timerSeconds)
+        assertEquals(1, undone.progress.hintsUsed)
+    }
+
+    @Test
+    fun `startGame 清空撤销历史`() {
+        var s = startedState()
+        s = GameReducer.inputNumber(s, 12, 2)
+        assertTrue(s.canUndo)
+        val restarted = GameReducer.startGame(s, seed())
+        assertFalse(restarted.canUndo)
+        assertTrue(restarted.history.isEmpty())
+    }
+
+    @Test
+    fun `无效输入不记录撤销历史`() {
+        var s = startedState()
+        s = GameReducer.inputNumber(s, 0, 4) // 给定格
+        s = GameReducer.inputNumber(s, 12, 9) // 超出 4x4 范围
+        s = GameReducer.toggleNote(s, 0, 2) // 给定格
+        assertFalse(s.canUndo)
+    }
+
+    @Test
+    fun `相同输入不产生新历史`() {
+        var s = startedState()
+        s = GameReducer.inputNumber(s, 12, 2)
+        s = GameReducer.inputNumber(s, 12, 2)
+        assertEquals(1, s.history.size)
+    }
+
+    @Test
+    fun `历史上限 100 丢弃最旧`() {
+        var s = startedState()
+        s = GameReducer.inputNumber(s, 12, 2)
+        repeat(99) {
+            s = GameReducer.toggleNote(s, 13, (it % 4) + 1)
+        }
+        assertEquals(100, s.history.size)
+        s = GameReducer.inputNumber(s, 13, 1)
+        assertEquals(100, s.history.size)
+    }
+
     @Suppress("unused")
     private fun _idUnused(v: Int) = v
 }

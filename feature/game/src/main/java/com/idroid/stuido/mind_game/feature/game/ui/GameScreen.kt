@@ -106,6 +106,7 @@ fun GameScreen(
                     hintsLeft = state.hintsLeft,
                     maxHints = state.config.maxHints,
                     onExit = onExit,
+                    onTimerClick = { dispatch(GameEvent.TogglePause) },
                     modifier = Modifier.fillMaxWidth(),
                 )
 
@@ -122,17 +123,16 @@ fun GameScreen(
                         )
                         Spacer(Modifier.height(8.dp))
                         GameToolBar(
+                            canUndo = state.canUndo && state.progress.isRunning,
                             noteMode = state.selection.inputMode == InputMode.NOTE,
-                            isPaused = status == GameStatus.PAUSED,
-                            canAct = state.selection.index?.let { it in state.board.givens }?.not() ?: true,
+                            canErase = state.selection.index?.let { it !in state.board.givens } ?: false,
                             hintsLeft = state.hintsLeft,
                             showDebugSolve = showDebugSolve,
+                            onUndo = { dispatch(GameEvent.Undo) },
                             onNoteMode = { dispatch(GameEvent.ToggleNoteMode) },
                             onErase = { dispatch(GameEvent.Erase) },
                             onHint = { dispatch(GameEvent.RequestHint) },
-                            onCheck = { dispatch(GameEvent.RequestCheck) },
                             onSolve = { showSolveDialog = true },
-                            onPause = { dispatch(GameEvent.TogglePause) },
                         )
                         NumberPad(
                             size = state.board.size,
