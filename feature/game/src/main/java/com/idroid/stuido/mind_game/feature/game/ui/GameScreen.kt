@@ -1,5 +1,6 @@
 package com.idroid.stuido.mind_game.feature.game.ui
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -236,6 +237,8 @@ fun GameScreen(
                         .weight(1f)
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 6.dp),
+                    // 棋盘在状态行与底部工具区之间的剩余空间内垂直居中（溢出时仍可滚动）。
+                    verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     when {
