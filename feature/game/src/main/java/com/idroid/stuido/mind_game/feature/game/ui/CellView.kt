@@ -40,6 +40,8 @@ fun CellView(
     size: Int,
     visual: CellVisual,
     modifier: Modifier = Modifier,
+    digitFontSize: TextUnit = mainDigitFontSize(size),
+    noteFontSize: TextUnit = noteFontSize(size),
     onClick: () -> Unit = {},
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -71,22 +73,22 @@ fun CellView(
                 text = value.toString(),
                 color = numberColor,
                 fontWeight = fontWeight,
-                fontSize = mainDigitFontSize(size),
+                fontSize = digitFontSize,
                 textAlign = TextAlign.Center,
             )
         } else if (notes.isNotEmpty()) {
-            NotesGrid(notes = notes, maxDigit = size)
+            NotesGrid(notes = notes, maxDigit = size, noteFontSize = noteFontSize)
         }
     }
 }
 
 @Composable
-private fun NotesGrid(notes: Set<Int>, maxDigit: Int) {
+private fun NotesGrid(notes: Set<Int>, maxDigit: Int, noteFontSize: TextUnit = noteFontSize(maxDigit)) {
     val cols = ceil(sqrt(maxDigit.toDouble())).toInt().coerceIn(1, 3)
     val cap = maxDigit.coerceAtMost(9)
     val maxRows = ceil(cap.toDouble() / cols).toInt().coerceAtLeast(1)
     val noteColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val fontSize = noteFontSize(maxDigit)
+    val fontSize = noteFontSize
 
     Column(
         modifier = Modifier
@@ -121,13 +123,13 @@ private fun NotesGrid(notes: Set<Int>, maxDigit: Int) {
     }
 }
 
-private fun mainDigitFontSize(size: Int): TextUnit = when {
+internal fun mainDigitFontSize(size: Int): TextUnit = when {
     size <= 4 -> 24.sp
     size <= 6 -> 20.sp
     else -> 16.sp
 }
 
-private fun noteFontSize(size: Int): TextUnit = when {
+internal fun noteFontSize(size: Int): TextUnit = when {
     size <= 4 -> 11.sp
     size <= 6 -> 10.sp
     else -> 8.sp

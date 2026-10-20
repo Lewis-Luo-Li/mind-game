@@ -3,6 +3,7 @@ package com.idroid.stuido.mind_game.feature.game.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -16,7 +17,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.idroid.stuido.mind_game.feature.game.mvi.BoardCells
 
 /**
@@ -42,12 +45,16 @@ fun GameBoard(
         BoardGeometry.duplicateCells(board.values, size, boxWidth, boxHeight)
     }
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .padding(10.dp)
             .aspectRatio(1f),
         contentAlignment = Alignment.Center,
     ) {
+        // 字号随实际格宽缩放：固定字号在极小棋盘上会溢出格界、与邻格重叠。
+        val cellDp = maxWidth / size
+        val digitFontSize: TextUnit = minOf(mainDigitFontSize(size).value, cellDp.value * 0.5f).sp
+        val noteFontSize: TextUnit = minOf(noteFontSize(size).value, cellDp.value * 0.22f).sp
         Column(modifier = Modifier.fillMaxSize()) {
             repeat(size) { r ->
                 Row(
@@ -83,6 +90,8 @@ fun GameBoard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f),
+                            digitFontSize = digitFontSize,
+                            noteFontSize = noteFontSize,
                             onClick = { onCellClick(i) },
                         )
                     }
@@ -92,6 +101,7 @@ fun GameBoard(
         GridLinesOverlay(size = size, boxWidth = boxWidth, boxHeight = boxHeight)
     }
 }
+
 
 @Composable
 private fun GridLinesOverlay(size: Int, boxWidth: Int, boxHeight: Int) {

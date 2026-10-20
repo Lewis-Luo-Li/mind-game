@@ -2,13 +2,16 @@ package com.idroid.stuido.mind_game.feature.game.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -27,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -119,6 +123,8 @@ fun GameScreen(
                 .consumeWindowInsets(inner),
         ) {
             val colorScheme = MaterialTheme.colorScheme
+            // <340dp 宽时状态行 chips 只留数值（图标自表意），防止计数被省略号吃掉。
+            val compactStatusRow = LocalConfiguration.current.screenWidthDp < 340
             // 顶部导航按钮与底部工具栏一致的圆形风格（surfaceVariant 圆底）。
             val navIconStyle = IconButtonStyle(
                 shape = CircleShape,
@@ -197,23 +203,41 @@ fun GameScreen(
                                 onClick = { dispatch(GameEvent.TogglePause) },
                             ),
                             // 图标纯装饰（文本自描述），contentDescription 传 null 避免读屏重复播报。
+                            // 窄屏（<340dp）缩写为纯计数，防止省略号截掉数值。
                             StatusChipUiContent(
                                 icon = Theme.icons.error,
-                                contentDescription = null,
-                                text = stringResource(
-                                    R.string.game_status_errors,
-                                    state.progress.mistakes,
-                                    state.config.maxMistakes,
-                                ),
+                                // 缩写态由图标携带语义标签，读屏播「Errors, 0/3」。
+                                contentDescription = if (compactStatusRow) {
+                                    stringResource(R.string.cd_status_errors)
+                                } else {
+                                    null
+                                },
+                                text = if (compactStatusRow) {
+                                    "${state.progress.mistakes}/${state.config.maxMistakes}"
+                                } else {
+                                    stringResource(
+                                        R.string.game_status_errors,
+                                        state.progress.mistakes,
+                                        state.config.maxMistakes,
+                                    )
+                                },
                             ),
                             StatusChipUiContent(
                                 icon = Theme.icons.hint,
-                                contentDescription = null,
-                                text = stringResource(
-                                    R.string.game_status_hints,
-                                    state.hintsLeft,
-                                    state.config.maxHints,
-                                ),
+                                contentDescription = if (compactStatusRow) {
+                                    stringResource(R.string.cd_status_hints)
+                                } else {
+                                    null
+                                },
+                                text = if (compactStatusRow) {
+                                    "${state.hintsLeft}/${state.config.maxHints}"
+                                } else {
+                                    stringResource(
+                                        R.string.game_status_hints,
+                                        state.hintsLeft,
+                                        state.config.maxHints,
+                                    )
+                                },
                             ),
                         ),
                     ),
@@ -231,27 +255,36 @@ fun GameScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                Column(
+                BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 6.dp),
-                    // 棋盘在状态行与底部工具区之间的剩余空间内垂直居中（溢出时仍可滚动）。
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                        .weight(1f),
                 ) {
-                    when {
-                        state.progress.isBusy -> BusyContent()
-                        state.board.size == 0 -> IdleContent()
-                        else -> {
-                            GameBoard(
-                                board = state.board,
-                                selectedIndex = state.selection.index,
-                                checkFlags = state.selection.conflicts,
-                                onCellClick = { dispatch(GameEvent.SelectCell(it)) },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                    // 棋盘边长取宽/剩余高/520dp 三者最小：矮屏与横屏完整可见、平板不变形。
+                    // 高度极低（多窗口/分屏）时保留 200dp 下限并交给纵向滚动，格子不至于不可用。
+                    val boardSize = minOf(maxWidth, maxOf(maxHeight, 200.dp), 520.dp)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = maxHeight)
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 6.dp),
+                        // 棋盘在状态行与底部工具区之间的剩余空间内垂直居中（溢出时仍可滚动）。
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        when {
+                            state.progress.isBusy -> BusyContent()
+                            state.board.size == 0 -> IdleContent()
+                            else -> {
+                                GameBoard(
+                                    board = state.board,
+                                    selectedIndex = state.selection.index,
+                                    checkFlags = state.selection.conflicts,
+                                    onCellClick = { dispatch(GameEvent.SelectCell(it)) },
+                                    modifier = Modifier.size(boardSize),
+                                )
+                            }
                         }
                     }
                 }
