@@ -25,7 +25,6 @@ fun IconButton(
         modifier = modifier.size(uiStyle.surfaceSize),
         shape = uiStyle.shape,
         color = uiStyle.surfaceColor,
-        shadowElevation = 3.dp,
         onClick = uiContent.onClick
     ) {
         Box(contentAlignment = Alignment.Center) {

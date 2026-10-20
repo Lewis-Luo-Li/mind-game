@@ -52,7 +52,6 @@ fun LabeledCircleButton(
                 } else {
                     null
                 },
-                shadowElevation = 3.dp,
                 enabled = enabled,
                 onClick = uiContent.onClick,
             ) {
@@ -70,7 +69,6 @@ fun LabeledCircleButton(
                     modifier = Modifier.align(Alignment.TopEnd),
                     shape = CircleShape,
                     color = uiStyle.badgeBackgroundColor,
-                    shadowElevation = 1.dp,
                 ) {
                     Text(
                         text = uiContent.badge,
