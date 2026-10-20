@@ -2,6 +2,8 @@ package com.idroid.stuido.mind_game.feature.game.reducers
 
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
+import com.idroid.stuido.mind_game.core.logic.config.RewardRule
+import com.idroid.stuido.mind_game.core.logic.config.RewardsSection
 import com.idroid.stuido.mind_game.feature.game.GameMode
 import com.idroid.stuido.mind_game.feature.game.GameOutcome
 import com.idroid.stuido.mind_game.feature.game.GameStatus
@@ -404,6 +406,100 @@ class GameReducerTest {
         assertEquals(100, s.history.size)
         s = GameReducer.inputNumber(s, 13, 1)
         assertEquals(100, s.history.size)
+    }
+
+    // 激励广告奖励发放
+    private fun rewardsState(
+        mode: GameMode = GameMode.FREE,
+        extraHint: RewardRule = RewardRule(enabled = true, amount = 1, maxPerGame = 3),
+        extraLife: RewardRule = RewardRule(enabled = true, amount = 1, maxPerGame = 2),
+    ): GameUiState {
+        var s = GameUiState()
+        s = GameReducer.setGameConfig(
+            s,
+            GameConfig(
+                mode = mode,
+                spec = BoardSpec.MINI,
+                difficulty = Difficulty.EASY,
+                rewards = RewardsSection(extraLife = extraLife, extraHint = extraHint),
+            ),
+        )
+        return GameReducer.startGame(s, seed())
+    }
+
+    @Test
+    fun `grantRewardedHints 追加奖励提示并计数`() {
+        val s = rewardsState()
+        val granted = GameReducer.grantRewardedHints(s, 1)
+        assertEquals(1, granted.progress.bonusHints)
+        assertEquals(1, granted.progress.hintRewardsUsed)
+        assertEquals(4, granted.hintsTotal) // 默认 3 + 奖励 1
+    }
+
+    @Test
+    fun `grantRewardedHints 达 max_per_game 后不再生效`() {
+        var s = rewardsState()
+        repeat(3) { s = GameReducer.grantRewardedHints(s, 1) }
+        val capped = GameReducer.grantRewardedHints(s, 1)
+        assertEquals(3, capped.progress.bonusHints)
+        assertEquals(3, capped.progress.hintRewardsUsed)
+    }
+
+    @Test
+    fun `grantRewardedLives 在 FAILED 终态复活为 RUNNING`() {
+        var s = rewardsState()
+        repeat(3) { s = GameReducer.incrementMistakes(s) }
+        s = GameReducer.finish(s, GameOutcome.FAILED)
+        val revived = GameReducer.grantRewardedLives(s, 1)
+        assertEquals(GameStatus.RUNNING, revived.progress.status)
+        assertNull(revived.progress.outcome)
+        assertEquals(1, revived.progress.bonusLives)
+        assertEquals(1, revived.livesLeft)
+    }
+
+    @Test
+    fun `grantRewardedLives 在 SOLVED 终态不复活`() {
+        var s = rewardsState()
+        s = GameReducer.finish(s, GameOutcome.SOLVED)
+        val granted = GameReducer.grantRewardedLives(s, 1)
+        assertEquals(GameStatus.FINISHED, granted.progress.status)
+        assertEquals(GameOutcome.SOLVED, granted.progress.outcome)
+        assertEquals(1, granted.progress.bonusLives)
+    }
+
+    @Test
+    fun `grantRewardedLives 达 max_per_game 后 FAILED 不复活`() {
+        var s = rewardsState()
+        repeat(3) { s = GameReducer.incrementMistakes(s) }
+        s = GameReducer.finish(s, GameOutcome.FAILED)
+        s = GameReducer.grantRewardedLives(s, 1)
+        s = GameReducer.grantRewardedLives(s, 1)
+        // 第 3 次越限：次数不增、也不应再把已结束的局拉起。
+        val s3 = GameReducer.grantRewardedLives(s, 1)
+        assertEquals(2, s3.progress.lifeRewardsUsed)
+        assertEquals(2, s3.progress.bonusLives)
+        assertEquals(GameStatus.RUNNING, s3.progress.status)
+    }
+
+    @Test
+    fun `daily 模式 allow_in_daily=false 时发放不生效`() {
+        val rule = RewardRule(enabled = true, amount = 1, maxPerGame = 2, allowInDaily = false)
+        val s = rewardsState(mode = GameMode.DAILY, extraLife = rule, extraHint = rule)
+        assertEquals(s, GameReducer.grantRewardedHints(s, 1))
+        assertEquals(s, GameReducer.grantRewardedLives(s, 1))
+    }
+
+    @Test
+    fun `startGame 清零本局奖励计数并递增 gameInstance`() {
+        var s = rewardsState()
+        s = GameReducer.grantRewardedHints(s, 1)
+        assertEquals(1, s.progress.gameInstance)
+        val restarted = GameReducer.startGame(s, seed())
+        assertEquals(0, restarted.progress.bonusHints)
+        assertEquals(0, restarted.progress.hintRewardsUsed)
+        assertEquals(0, restarted.progress.bonusLives)
+        assertEquals(0, restarted.progress.lifeRewardsUsed)
+        assertEquals(2, restarted.progress.gameInstance)
     }
 
     @Suppress("unused")

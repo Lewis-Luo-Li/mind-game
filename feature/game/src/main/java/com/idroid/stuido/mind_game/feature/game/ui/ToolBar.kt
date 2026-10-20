@@ -31,7 +31,9 @@ fun GameToolBar(
     canUndo: Boolean,
     noteMode: Boolean,
     canErase: Boolean,
-    hintsLeft: Int,
+    hintBadge: String,
+    hintEnabled: Boolean,
+    hintContentDescription: String,
     showDebugSolve: Boolean,
     onUndo: () -> Unit,
     onNoteMode: () -> Unit,
@@ -100,12 +102,12 @@ fun GameToolBar(
             LabeledCircleButton(
                 uiContent = LabeledCircleButtonUiContent(
                     icon = Theme.icons.hint,
-                    contentDescription = stringResource(R.string.tool_hint),
+                    contentDescription = hintContentDescription,
                     label = stringResource(R.string.tool_hint),
-                    badge = hintsLeft.toString(),
+                    badge = hintBadge,
                     onClick = onHint,
                 ),
-                uiConfig = LabeledCircleButtonConfig(enabled = hintsLeft > 0),
+                uiConfig = LabeledCircleButtonConfig(enabled = hintEnabled),
                 uiStyle = buttonStyle,
             )
             if (showDebugSolve) {

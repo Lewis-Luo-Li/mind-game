@@ -301,4 +301,58 @@ class GameViewModelTest {
         vm.dispatch(GameEvent.Undo)
         assertEquals(finished, vm.uiState.value)
     }
+
+    @Test
+    fun `granted rewarded hints refill the hint budget and can fill a cell`() = runGameTest {
+        val vm = newViewModel()
+        val effects = mutableListOf<GameEffect>()
+        collectEffects(vm, effects)
+        startGame(vm, maxHints = 1)
+
+        // 用光仅有的一次提示。
+        vm.dispatch(GameEvent.RequestHint)
+        assertEquals(0, vm.uiState.value.hintsLeft)
+
+        // 激励广告发奖：+1 提示，随后立即消耗填格（路由层的调用顺序）。
+        vm.dispatch(GameEvent.GrantRewardedHints(1))
+        assertEquals(1, vm.uiState.value.hintsLeft)
+        assertEquals(1, vm.uiState.value.progress.hintRewardsUsed)
+        vm.dispatch(GameEvent.RequestHint)
+        val lastHint = effects.filterIsInstance<GameEffect.HintFilled>().last()
+        assertEquals(
+            vm.uiState.value.board.solution[lastHint.index],
+            vm.uiState.value.board.values[lastHint.index],
+        )
+        assertEquals(0, vm.uiState.value.hintsLeft)
+    }
+
+    @Test
+    fun `granted rewarded life revives a failed game back to running`() = runGameTest {
+        val vm = newViewModel()
+        val effects = mutableListOf<GameEffect>()
+        collectEffects(vm, effects)
+        startGame(vm, maxMistakes = 1)
+
+        val board = vm.uiState.value.board
+        val index = board.values.indices.first { it !in board.givens }
+        val wrong = (1..board.size).first { it != board.solution[index] }
+        vm.dispatch(GameEvent.InputNumber(index, wrong))
+        assertEquals(GameStatus.FINISHED, vm.uiState.value.progress.status)
+        assertEquals(GameOutcome.FAILED, vm.uiState.value.progress.outcome)
+
+        vm.dispatch(GameEvent.GrantRewardedLives(1))
+
+        assertEquals(GameStatus.RUNNING, vm.uiState.value.progress.status)
+        assertNull(vm.uiState.value.progress.outcome)
+        assertEquals(1, vm.uiState.value.livesLeft)
+        assertEquals(1, vm.uiState.value.progress.lifeRewardsUsed)
+
+        // 复活后再错一次（另一格）：正常判负终局。
+        val board2 = vm.uiState.value.board
+        val other = board2.values.indices.first { it !in board2.givens && it != index }
+        val wrong2 = (1..board2.size).first { it != board2.solution[other] }
+        vm.dispatch(GameEvent.InputNumber(other, wrong2))
+        assertEquals(GameStatus.FINISHED, vm.uiState.value.progress.status)
+        assertEquals(GameOutcome.FAILED, vm.uiState.value.progress.outcome)
+    }
 }

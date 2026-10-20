@@ -49,6 +49,8 @@ fun FinishPanel(
     maxMistakes: Int,
     hintsUsed: Int,
     maxHints: Int,
+    watchAdLabel: String? = null,
+    onWatchAd: (() -> Unit)? = null,
     onRetrySamePuzzle: () -> Unit,
     onNewGame: () -> Unit,
     onExit: () -> Unit,
@@ -90,6 +92,11 @@ fun FinishPanel(
                 ),
             )
             Spacer(Modifier.height(16.dp))
+            // 命数用尽且奖励可领：「看广告 +N 命」主按钮，复活后继续本局。
+            if (outcome == GameOutcome.FAILED && watchAdLabel != null && onWatchAd != null) {
+                Button(onClick = onWatchAd) { Text(watchAdLabel) }
+                Spacer(Modifier.height(4.dp))
+            }
             if (outcome == GameOutcome.SOLVED) {
                 Button(onClick = onNewGame) { Text(stringResource(R.string.action_new_game)) }
             } else {

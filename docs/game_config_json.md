@@ -63,7 +63,7 @@ Field notes:
 - **Keys are the Kotlin enum names in lowercase** (`BoardSpec.MINI` → `"mini"`, `Difficulty.EXPERT` → `"expert"`). Leaving out a combination makes it unavailable. This matches today's `DifficultyConfig.holes` behaviour (4×4 has no expert).
 - **`rules`:** `default`, then the most specific matching `override`. A match on `mode` + `spec` + `difficulty` beats a partial match, and later entries win ties. That gives `lives` and `hints` for a game. Example: Daily is fixed at 3/3 so every player has the same rules.
 - **`rewards`:** what "watch an ad" grants once lives or hints run out. `max_per_game` stops endless revives. `allow_in_daily` keeps Daily fair if you ever add rankings.
-- **`ads.enabled`:** a master switch, off until AdMob is integrated. With rewards on and ads off, a debug/fake ad grants the reward straight away (placeholder button).
+- **`ads.enabled`:** a master switch for AdMob. With rewards on and ads off, a fake controller grants the reward straight away (no network). The interstitial has its own `enabled` plus a frequency gate (`min_games_between`, `min_seconds_between`).
 - **`daily.seed_salt`:** mixed into the date-based seed (`epochDay`). Changing it remotely produces a fresh set of daily puzzles. It replaces the unused fixed `dailySeed`.
 - **`features`:** feature flags. Ship code hidden behind a flag and switch it on remotely, for example for Crossword or a staged rollout.
 - **`schema_version`:** bumped only on breaking changes. The app ignores a config whose `schema_version` is newer than it understands and keeps using the previous one. **`config_version`:** lets you track which settings a player had (logs/analytics).
@@ -74,7 +74,7 @@ Field notes:
 |---|---|
 | `:core:logic` (pure Kotlin) | `config/GameRemoteConfig.kt`: `@Serializable` data classes for the schema above. `GameConfigParser.parse(json): Result<GameRemoteConfig>` (kotlinx-serialization-json with `ignoreUnknownKeys = true`). `validate()`: holes `1 until size*size`, lives `1..9`, hints `0..9`; anything invalid → fall back to defaults for that section. Mapping `toDifficultyConfig()`, plus `rulesFor(mode, spec, difficulty): GameRules(lives, hints)` |
 | `:app` | `GameConfigRepository`: (1) bundled `assets/game_config.json` = defaults that always work offline → (2) last downloaded copy cached in `filesDir` → (3) background fetch on startup, applied from the **next** game. Exposes `StateFlow<GameRemoteConfig>`. One instance (replaces the two `DifficultyConfig.default()` calls) |
-| `:feature:game` | `GameEvent.NewGame(..., rules: GameRules, rewards: RewardRules)`. The ViewModel copies the rules into `GameConfig` at game start, so a mid-game config update never changes a running game. `RewardedAdGateway` interface (`suspend fun show(type): Boolean`), with a fake implementation in debug builds and an AdMob one in `:app` later |
+| `:feature:game` | `GameEvent.NewGame(..., rules: GameRules, rewards: RewardsSection)`. The ViewModel copies the rules into `GameConfig` at game start, so a mid-game config update never changes a running game. Ad abstractions `ads/Ads.kt` (`RewardedAdController`, `InterstitialController`, `BannerAdSlot`) — AdMob implementations live in `:app`, `FakeRewardedAdController` serves previews/tests and the ads-off path |
 
 **Remote source options:**
 - **Firebase Remote Config (recommended):** one string parameter `game_config_v1` holding the JSON above. You get A/B testing and percentage rollout for free, and it fits with AdMob and Analytics later.
