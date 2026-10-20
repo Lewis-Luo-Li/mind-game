@@ -4,7 +4,7 @@ An Android puzzle-game app built with Kotlin and Jetpack Compose. The first (and
 
 - **Free mode**: pick a board size and difficulty; each game is a new random puzzle.
 - **Daily mode**: a puzzle seeded from today's date, so everyone gets the same board for a given day and size.
-- **In-game tools**: pencil notes, erase, limited hints, check, debug-only solution reveal, pause, timer and configurable lives.
+- **In-game tools**: undo, pencil notes, erase, limited hints, debug-only solution reveal, pause (tap the timer), timer and configurable lives.
 - **Theming**: System / Light / Dark mode and four accent palettes (Lilac, Ocean, Forest, Sunset), applied live.
 
 ---
@@ -105,7 +105,7 @@ Plugins: `mindgame.android.library`, `mindgame.android.library.compose`
 
 | Package | Key types | Responsibility |
 |---|---|---|
-| `mvi` | `GameUiState`, `GameEvent`, `GameEffect`, `GameViewModel` | MVI contract. `GameUiState` is an immutable snapshot (`config`, `board`, `selection`, `progress`). The ViewModel is the single state owner: `dispatch(GameEvent)` in, `uiState: StateFlow` and `effect: Flow<GameEffect>` out. Puzzle generation runs on an injectable dispatcher; a 1 Hz coroutine drives the timer. |
+| `mvi` | `GameUiState`, `GameEvent`, `GameEffect`, `GameViewModel` | MVI contract. `GameUiState` is an immutable snapshot (`config`, `board`, `selection`, `progress`, `history`). The ViewModel is the single state owner: `dispatch(GameEvent)` in, `uiState: StateFlow` and `effect: Flow<GameEffect>` out. Puzzle generation runs on an injectable dispatcher; a 1 Hz coroutine drives the timer. |
 | `reducers` | `GameReducer` | Pure `(GameUiState, input) -> GameUiState` functions (select, input, notes, erase, pause, finish with `GameOutcome`, …). |
 | `engine` | `GameFactory`, `GameSeed`, `HintProvider`, `InputValidator` | Adapts `:core:logic` for the UI: `GameFactory` turns (mode, spec, difficulty, seed) into a `GameSeed` (values, solution, givens); `HintProvider` gives hints and checks answers against the solution; `InputValidator` detects conflicts and completion. |
 | `ui` | `GameScreenRoute`, `GameScreen`, `GameTopBar`, `GameBoard`, `CellView`, `GameToolBar`, `NumberPad`, `BoardGeometry` | `GameScreenRoute` creates one `GameViewModel` per session (`sessionKey`), dispatches `NewGame`, and collects one-shot effects into snackbars; `GameScreen` renders `GameUiState`. |
@@ -172,7 +172,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    UI["GameScreen<br/>(Compose)"] -- "GameEvent<br/>SelectCell / InputNumber / ToggleNote /<br/>Erase / Hint / Check / Solve / TogglePause /<br/>RetrySamePuzzle / Restart" --> VM["GameViewModel.dispatch()"]
+    UI["GameScreen<br/>(Compose)"] -- "GameEvent<br/>SelectCell / InputNumber / ToggleNote /<br/>Erase / Undo / Hint / Check / Solve / TogglePause /<br/>RetrySamePuzzle / Restart" --> VM["GameViewModel.dispatch()"]
     VM --> R["GameReducer<br/>(pure functions)"]
     VM --> E["engine<br/>HintProvider · InputValidator · GameFactory"]
     R --> S[("GameUiState<br/>StateFlow")]

@@ -24,16 +24,28 @@ enum class InputMode {
  * @property board  当前盘面进展（值 + 给定标记 + 每格笔记 + 冲突高亮）。
  * @property selection 当前选中信息与输入模式。
  * @property progress 进度、状态、计时与忙碌标记。
+ * @property history 撤销历史：每次盘面变更前压入的 [GameSnapshot]，新局清空。
  */
 data class GameUiState(
     val config: GameConfig = GameConfig(),
     val board: BoardCells = BoardCells.EMPTY,
     val selection: Selection = Selection(),
     val progress: GameProgress = GameProgress(),
+    val history: List<GameSnapshot> = emptyList(),
 ) {
     val hintsLeft: Int get() = (config.maxHints - progress.hintsUsed).coerceAtLeast(0)
     val livesLeft: Int get() = (config.maxMistakes - progress.mistakes).coerceAtLeast(0)
+    val canUndo: Boolean get() = history.isNotEmpty()
 }
+
+/**
+ * 撤销快照：记录一次盘面变更前的 (board, selection)，供撤销时回滚。
+ * 错误数 / 计时 / 已用提示 / outcome 属于 progress，不在快照内，撤销不回滚它们。
+ */
+data class GameSnapshot(
+    val board: BoardCells,
+    val selection: Selection,
+)
 
 /**
  * 对局静态配置（开局后一般在整局内不变）。

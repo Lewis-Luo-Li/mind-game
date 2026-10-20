@@ -81,6 +81,9 @@ class GameViewModel(
                 _uiState.update { GameReducer.toggleNote(it, event.index, event.value) }
             }
             GameEvent.Erase -> ifRunning { erase() }
+            GameEvent.Undo -> ifRunning {
+                _uiState.update { GameReducer.undo(it) }
+            }
 
             GameEvent.ToggleNoteMode -> _uiState.update { GameReducer.toggleNoteMode(it) }
             GameEvent.RequestHint -> ifRunning { requestHint() }

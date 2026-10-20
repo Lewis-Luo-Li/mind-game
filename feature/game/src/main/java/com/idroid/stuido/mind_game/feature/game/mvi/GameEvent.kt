@@ -56,6 +56,9 @@ sealed interface GameEvent {
 
     // ---------- 操作工具 ----------
 
+    /** 撤销最近一次盘面变更（恢复盘面与选中；不回滚错误 / 计时 / 提示次数）。 */
+    data object Undo : GameEvent
+
     /** 使用一次提示：填入正确值到当前格，不增加错误。 */
     data object RequestHint : GameEvent
 

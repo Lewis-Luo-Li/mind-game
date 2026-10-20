@@ -1,5 +1,6 @@
 package com.idroid.stuido.mind_game.feature.game.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +30,7 @@ fun GameTopBar(
     hintsLeft: Int,
     maxHints: Int,
     onExit: () -> Unit,
+    onTimerClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val minutes = timerSeconds / 60
@@ -48,7 +50,12 @@ fun GameTopBar(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(stringResource(R.string.game_topbar_time, minutes, seconds), style = MaterialTheme.typography.bodySmall)
+                    // D4：点击计时器切换暂停/继续。
+                    Text(
+                        text = stringResource(R.string.game_topbar_time, minutes, seconds),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.clickable { onTimerClick() },
+                    )
                     Text(stringResource(R.string.game_topbar_mistakes, mistakes, maxMistakes), style = MaterialTheme.typography.bodySmall)
                     Text(stringResource(R.string.game_topbar_hints, hintsLeft, maxHints), style = MaterialTheme.typography.bodySmall)
                 }
