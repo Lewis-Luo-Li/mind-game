@@ -1,6 +1,6 @@
 package com.idroid.stuido.mind_game.core.ui.components.keypad
 
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -33,14 +33,17 @@ data class NumberKeypadConfig(
 
 @Immutable
 data class NumberKeypadStyle(
-    val shape: Shape = CircleShape,
+    /** 键形：mockup 为圆角方形键。 */
+    val shape: Shape = RoundedCornerShape(10.dp),
+    /** 键区底色（整排键背后的色带，对齐 mockup 底部色带）。 */
+    val zoneColor: Color,
     val surfaceColor: Color,
     val disabledSurfaceColor: Color,
     val digitColor: Color,
     val disabledContentColor: Color,
     val badgeBackgroundColor: Color,
     val badgeContentColor: Color,
-    /** 单键圆形直径；默认 36dp 使 9 键在 ~360dp 屏宽内不裁剪、键区高约 64dp。 */
+    /** 单键边长；默认 36dp 使 9 键在 ~360dp 屏宽内不裁剪、键区高约 64dp。 */
     val keySize: Dp = 36.dp,
     val digitStyle: TextStyle = TextStyle.Default,
     val badgeStyle: TextStyle = TextStyle.Default,

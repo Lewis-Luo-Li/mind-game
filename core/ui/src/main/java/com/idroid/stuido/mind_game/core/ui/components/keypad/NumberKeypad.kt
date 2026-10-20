@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,7 +19,7 @@ import com.idroid.stuido.mind_game.core.ui.util.isHidden
 
 /**
  * 底部数字键区（对齐 docs/sudoku_ui.jpeg 的 Number Keyboard / thumb-easy zone）：
- * 一排等大的圆形数字键 1..digits，键下缘挂"剩余可填次数"徽标；
+ * 一排等大的圆角方形数字键 1..digits，键下缘挂"剩余可填次数"徽标；
  * 某数字剩余 0 或全局禁用时置灰且点击无效。各键占等宽一格，9 键不裁剪。
  */
 @Composable
@@ -31,13 +31,13 @@ fun NumberKeypad(
 ) {
     if (uiConfig.visibility.isHidden() || uiContent.digits <= 0) return
 
-    Surface(modifier = modifier.fillMaxWidth()) {
+    Surface(modifier = modifier.fillMaxWidth(), color = uiStyle.zoneColor) {
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 6.dp, vertical = 8.dp),
         ) {
-            // 窄屏（分屏/小窗）每格不足 keySize 时按格宽缩圆，避免相邻键重叠。
+            // 窄屏（分屏/小窗）每格不足 keySize 时按键宽缩键，避免相邻键重叠。
             val keySize = (maxWidth / uiContent.digits - 4.dp)
                 .coerceAtMost(uiStyle.keySize)
                 .coerceAtLeast(16.dp)
@@ -64,7 +64,7 @@ fun NumberKeypad(
     }
 }
 
-/** 单个数字键：圆形 + 居中数字 + 下缘剩余次数徽标。 */
+/** 单个数字键：圆角方形 + 居中数字 + 下缘剩余次数徽标。 */
 @Composable
 private fun KeyButton(
     digit: Int,
@@ -81,7 +81,6 @@ private fun KeyButton(
                 modifier = Modifier.size(keySize),
                 shape = uiStyle.shape,
                 color = if (enabled) uiStyle.surfaceColor else uiStyle.disabledSurfaceColor,
-                shadowElevation = 2.dp,
                 enabled = enabled,
                 onClick = onClick,
             ) {
@@ -93,14 +92,13 @@ private fun KeyButton(
                     )
                 }
             }
-            // 剩余次数徽标：挂在圆形下缘正中（对齐 mockup），禁用态同样置灰。
+            // 剩余次数徽标：挂在键下缘正中（对齐 mockup），禁用态同样置灰。
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .offset(y = 7.dp),
-                shape = CircleShape,
+                shape = RoundedCornerShape(4.dp),
                 color = if (enabled) uiStyle.badgeBackgroundColor else uiStyle.disabledSurfaceColor,
-                shadowElevation = 1.dp,
             ) {
                 Text(
                     text = remaining.toString(),

@@ -97,8 +97,9 @@ fun GameScreen(
         ) {
             val colorScheme = MaterialTheme.colorScheme
             val keypadStyle = NumberKeypadStyle(
-                surfaceColor = colorScheme.surfaceVariant,
-                disabledSurfaceColor = colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                zoneColor = colorScheme.secondaryContainer,
+                surfaceColor = colorScheme.surface,
+                disabledSurfaceColor = colorScheme.onSurface.copy(alpha = 0.08f),
                 digitColor = colorScheme.onSurface,
                 disabledContentColor = colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                 badgeBackgroundColor = colorScheme.primary,

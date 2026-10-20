@@ -11,8 +11,9 @@ import com.idroid.stuido.mind_game.core.ui.theme.MindgameTheme
 
 @Composable
 private fun previewStyle() = NumberKeypadStyle(
-    surfaceColor = MaterialTheme.colorScheme.surfaceVariant,
-    disabledSurfaceColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+    zoneColor = MaterialTheme.colorScheme.secondaryContainer,
+    surfaceColor = MaterialTheme.colorScheme.surface,
+    disabledSurfaceColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
     digitColor = MaterialTheme.colorScheme.onSurface,
     disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
     badgeBackgroundColor = MaterialTheme.colorScheme.primary,
