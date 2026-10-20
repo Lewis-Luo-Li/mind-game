@@ -54,8 +54,8 @@ fun GameToolBar(
         badgeContentColor = colorScheme.onPrimary,
         surfaceSize = 48.dp,
         iconSize = 24.dp,
-        labelStyle = MaterialTheme.typography.labelMedium,
-        badgeStyle = MaterialTheme.typography.labelSmall,
+        labelStyle = Theme.typography.bodyStyleNormal,
+        badgeStyle = Theme.typography.labelStyle,
     )
 
     Surface(modifier = modifier.fillMaxWidth()) {

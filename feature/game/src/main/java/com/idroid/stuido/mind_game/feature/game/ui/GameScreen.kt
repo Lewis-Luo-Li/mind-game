@@ -135,8 +135,8 @@ fun GameScreen(
                 badgeBackgroundColor = colorScheme.primary,
                 badgeContentColor = colorScheme.onPrimary,
                 keySize = 36.dp,
-                digitStyle = MaterialTheme.typography.titleMedium,
-                badgeStyle = MaterialTheme.typography.labelSmall,
+                digitStyle = Theme.typography.bodyStyleNormal,
+                badgeStyle = Theme.typography.labelStyle,
             )
             Column(
                 modifier = Modifier.fillMaxSize(),
@@ -224,7 +224,7 @@ fun GameScreen(
                             textColor = colorScheme.onSurface,
                             disabledContentColor = colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                             iconSize = 18.dp,
-                            textStyle = MaterialTheme.typography.labelLarge,
+                            textStyle = Theme.typography.labelStyle,
                         ),
                     ),
                     modifier = Modifier.fillMaxWidth(),
