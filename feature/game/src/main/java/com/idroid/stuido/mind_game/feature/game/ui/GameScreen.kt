@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,11 +30,26 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
+import com.idroid.stuido.mind_game.core.ui.components.button.IconButtonConfig
+import com.idroid.stuido.mind_game.core.ui.components.button.IconButtonStyle
+import com.idroid.stuido.mind_game.core.ui.components.button.IconButtonUiContent
 import com.idroid.stuido.mind_game.core.ui.components.keypad.NumberKeypad
 import com.idroid.stuido.mind_game.core.ui.components.keypad.NumberKeypadConfig
 import com.idroid.stuido.mind_game.core.ui.components.keypad.NumberKeypadStyle
 import com.idroid.stuido.mind_game.core.ui.components.keypad.NumberKeypadUiContent
+import com.idroid.stuido.mind_game.core.ui.components.status.StatusChipStyle
+import com.idroid.stuido.mind_game.core.ui.components.status.StatusChipUiContent
+import com.idroid.stuido.mind_game.core.ui.components.status.StatusInfoRow
+import com.idroid.stuido.mind_game.core.ui.components.status.StatusInfoRowConfig
+import com.idroid.stuido.mind_game.core.ui.components.status.StatusInfoRowStyle
+import com.idroid.stuido.mind_game.core.ui.components.status.StatusInfoRowUiContent
+import com.idroid.stuido.mind_game.core.ui.components.topbar.TopBar
+import com.idroid.stuido.mind_game.core.ui.components.topbar.TopBarUiConfig
+import com.idroid.stuido.mind_game.core.ui.components.topbar.TopBarUiContent
+import com.idroid.stuido.mind_game.core.ui.components.topbar.TopBarUiStyle
 import com.idroid.stuido.mind_game.core.ui.theme.MindgameTheme
+import com.idroid.stuido.mind_game.core.ui.theme.Theme
+import com.idroid.stuido.mind_game.core.ui.util.VisibilityConfig
 import com.idroid.stuido.mind_game.feature.game.GameMode
 import com.idroid.stuido.mind_game.feature.game.GameOutcome
 import com.idroid.stuido.mind_game.feature.game.GameStatus
@@ -70,6 +86,7 @@ fun GameScreen(
     state: GameUiState,
     dispatch: (GameEvent) -> Unit,
     onExit: () -> Unit,
+    onOpenSettings: (() -> Unit)? = null,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     showDebugSolve: Boolean = false,
 ) {
@@ -96,6 +113,13 @@ fun GameScreen(
                 .padding(inner),
         ) {
             val colorScheme = MaterialTheme.colorScheme
+            val navIconStyle = IconButtonStyle(
+                shape = CircleShape,
+                surfaceColor = colorScheme.surface,
+                iconTintColor = colorScheme.onSurface,
+                surfaceSize = 48.dp,
+                iconSize = 24.dp,
+            )
             val keypadStyle = NumberKeypadStyle(
                 zoneColor = colorScheme.secondaryContainer,
                 surfaceColor = colorScheme.surface,
@@ -112,6 +136,97 @@ fun GameScreen(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                // mockup 顶部两分区（固定，不随棋盘滚动）：56dp 导航条 + 44dp 状态行。
+                TopBar(
+                    uiContent = TopBarUiContent(
+                        onBackClick = onExit,
+                        onSettingsClick = onOpenSettings,
+                        topBarTitle = describeTitle(state),
+                        backButtonUiContent = IconButtonUiContent(
+                            icon = Theme.icons.back,
+                            contentDescription = stringResource(R.string.cd_nav_back),
+                            onClick = onExit,
+                        ),
+                        settingsButtonUiContent = IconButtonUiContent(
+                            icon = Theme.icons.settings,
+                            contentDescription = stringResource(R.string.cd_settings),
+                            // 去设置页前先暂停，返回后保持暂停态由用户恢复。
+                            onClick = {
+                                if (state.progress.status == GameStatus.RUNNING) {
+                                    dispatch(GameEvent.TogglePause)
+                                }
+                                onOpenSettings?.invoke()
+                            },
+                        ),
+                    ),
+                    uiConfig = TopBarUiConfig(
+                        settingsButtonConfig = IconButtonConfig(
+                            visibility = if (onOpenSettings != null) {
+                                VisibilityConfig.VISIBLE
+                            } else {
+                                VisibilityConfig.HIDDEN
+                            },
+                        ),
+                    ),
+                    uiStyle = TopBarUiStyle(
+                        topbarBgColor = colorScheme.surface,
+                        titleTextColor = colorScheme.onSurface,
+                        backButtonStyle = navIconStyle,
+                        settingsButtonStyle = navIconStyle,
+                    ),
+                )
+                StatusInfoRow(
+                    uiContent = StatusInfoRowUiContent(
+                        items = listOf(
+                            // D4：点击计时器切换暂停/继续。
+                            StatusChipUiContent(
+                                icon = Theme.icons.timer,
+                                contentDescription = stringResource(R.string.game_status_timer),
+                                text = formatTimer(state.progress.timerSeconds),
+                                onClick = { dispatch(GameEvent.TogglePause) },
+                            ),
+                            StatusChipUiContent(
+                                icon = Theme.icons.error,
+                                contentDescription = stringResource(
+                                    R.string.game_status_errors,
+                                    state.progress.mistakes,
+                                    state.config.maxMistakes,
+                                ),
+                                text = stringResource(
+                                    R.string.game_status_errors,
+                                    state.progress.mistakes,
+                                    state.config.maxMistakes,
+                                ),
+                            ),
+                            StatusChipUiContent(
+                                icon = Theme.icons.hint,
+                                contentDescription = stringResource(
+                                    R.string.game_status_hints,
+                                    state.hintsLeft,
+                                    state.config.maxHints,
+                                ),
+                                text = stringResource(
+                                    R.string.game_status_hints,
+                                    state.hintsLeft,
+                                    state.config.maxHints,
+                                ),
+                            ),
+                        ),
+                    ),
+                    uiConfig = StatusInfoRowConfig(enabled = !finished),
+                    uiStyle = StatusInfoRowStyle(
+                        zoneColor = colorScheme.surface,
+                        chipStyle = StatusChipStyle(
+                            iconTintColor = colorScheme.onSurfaceVariant,
+                            textColor = colorScheme.onSurface,
+                            disabledContentColor = colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            iconSize = 18.dp,
+                            textStyle = MaterialTheme.typography.labelLarge,
+                        ),
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -120,18 +235,6 @@ fun GameScreen(
                         .padding(horizontal = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    GameTopBar(
-                        title = describeTitle(state),
-                        timerSeconds = state.progress.timerSeconds,
-                        mistakes = state.progress.mistakes,
-                        maxMistakes = state.config.maxMistakes,
-                        hintsLeft = state.hintsLeft,
-                        maxHints = state.config.maxHints,
-                        onExit = onExit,
-                        onTimerClick = { dispatch(GameEvent.TogglePause) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-
                     when {
                         state.progress.isBusy -> BusyContent()
                         state.board.size == 0 -> IdleContent()
@@ -266,7 +369,7 @@ private fun gamePreview(
     onExit: () -> Unit = {},
 ) {
     MindgameTheme() {
-        GameScreen(state = state, dispatch = dispatch, onExit = onExit)
+        GameScreen(state = state, dispatch = dispatch, onExit = onExit, onOpenSettings = {})
     }
 }
 
