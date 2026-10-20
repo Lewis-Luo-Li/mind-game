@@ -15,6 +15,8 @@ data class IconSet(
     val notes: ImageVector,
     val erase: ImageVector,
     val hint: ImageVector,
+    val timer: ImageVector,
+    val error: ImageVector,
 )
 
 @Composable
@@ -26,6 +28,8 @@ fun rememberDefaultIconSet(): IconSet {
         notes = ImageVector.vectorResource(R.drawable.ic_notes),
         erase = ImageVector.vectorResource(R.drawable.ic_erase),
         hint = ImageVector.vectorResource(R.drawable.ic_hint),
+        timer = ImageVector.vectorResource(R.drawable.ic_timer),
+        error = ImageVector.vectorResource(R.drawable.ic_error),
     )
 }
 

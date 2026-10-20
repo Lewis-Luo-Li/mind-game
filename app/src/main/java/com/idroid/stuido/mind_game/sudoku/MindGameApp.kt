@@ -1,11 +1,13 @@
 package com.idroid.stuido.mind_game.sudoku
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,6 +89,7 @@ fun MindGameApp(themePrefs: ThemePrefs) {
     if (req != null) {
         GameScreenRoute(
             onExit = { playRequest = null },
+            onOpenSettings = { navigate(Dest.Settings) },
             mode = req.mode,
             spec = req.spec,
             difficulty = req.difficulty,
@@ -97,6 +100,19 @@ fun MindGameApp(themePrefs: ThemePrefs) {
             showDebugSolve = BuildConfig.DEBUG,
             sessionKey = "sudoku-game-${req.id}",
         )
+        // 对局中打开设置：以覆盖页渲染在游玩屏之上，GameScreenRoute 仍在组合中，
+        // ViewModel 与已暂停的对局状态在返回后原样恢复。
+        if (backStack.last() is Dest.Settings) {
+            BackHandler { pop() }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .windowInsetsPadding(WindowInsets.safeDrawing),
+            ) {
+                SettingsScreen(themePrefs = themePrefs, onBack = ::pop)
+            }
+        }
         return
     }
 

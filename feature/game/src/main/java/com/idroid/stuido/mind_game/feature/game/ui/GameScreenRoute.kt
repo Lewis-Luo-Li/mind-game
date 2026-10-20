@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.collect
 @Composable
 fun GameScreenRoute(
     onExit: () -> Unit,
+    onOpenSettings: (() -> Unit)? = null,
     mode: GameMode = GameMode.FREE,
     spec: BoardSpec = BoardSpec.CLASSIC,
     difficulty: Difficulty = Difficulty.EASY,
@@ -75,6 +76,7 @@ fun GameScreenRoute(
         state = state,
         dispatch = vm::dispatch,
         onExit = onExit,
+        onOpenSettings = onOpenSettings,
         snackbarHostState = snackbarHostState,
         showDebugSolve = showDebugSolve,
     )

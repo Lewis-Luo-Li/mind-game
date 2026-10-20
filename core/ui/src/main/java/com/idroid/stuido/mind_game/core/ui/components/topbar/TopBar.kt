@@ -42,8 +42,24 @@ fun TopBar(
         }
 
         if (uiConfig.titleConfig.visibility.isVisible()) {
+            // 标题按可见端按钮取较大的对称留白：文本始终居中于整条栏，且不压到按钮
+            // （配合 titleConfig 单行省略；单侧隐藏时也不会偏移）。
+            val titlePad = maxOf(
+                if (uiConfig.backButtonConfig.visibility.isVisible()) {
+                    uiStyle.backButtonStyle.surfaceSize
+                } else {
+                    0.dp
+                },
+                if (uiConfig.settingsButtonConfig.visibility.isVisible()) {
+                    uiStyle.settingsButtonStyle.surfaceSize
+                } else {
+                    0.dp
+                },
+            ) + 4.dp
             BaseText(
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = titlePad),
                 text = AnnotatedString(uiContent.topBarTitle),
                 style = Theme.typography.titleStyleSemiBold,
                 config = uiConfig.titleConfig,

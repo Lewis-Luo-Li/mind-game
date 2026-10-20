@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import com.idroid.stuido.mind_game.core.ui.components.text.BaseText
+import com.idroid.stuido.mind_game.core.ui.components.text.TextConfig
 import com.idroid.stuido.mind_game.core.ui.util.isHidden
 
 /**
@@ -70,8 +72,8 @@ fun LabeledCircleButton(
                     shape = CircleShape,
                     color = uiStyle.badgeBackgroundColor,
                 ) {
-                    Text(
-                        text = uiContent.badge,
+                    BaseText(
+                        text = AnnotatedString(uiContent.badge),
                         modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
                         color = if (enabled) uiStyle.badgeContentColor else uiStyle.disabledContentColor,
                         style = uiStyle.badgeStyle,
@@ -79,11 +81,11 @@ fun LabeledCircleButton(
                 }
             }
         }
-        Text(
-            text = uiContent.label,
+        BaseText(
+            text = AnnotatedString(uiContent.label),
             color = if (enabled) uiStyle.labelColor else uiStyle.disabledContentColor,
             style = uiStyle.labelStyle,
-            maxLines = 1,
+            config = TextConfig(maxLine = 1),
         )
     }
 }
