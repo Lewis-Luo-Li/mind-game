@@ -118,10 +118,11 @@ fun GameScreen(
                 .consumeWindowInsets(inner),
         ) {
             val colorScheme = MaterialTheme.colorScheme
+            // 顶部导航按钮与底部工具栏一致的圆形风格（surfaceVariant 圆底）。
             val navIconStyle = IconButtonStyle(
                 shape = CircleShape,
-                surfaceColor = colorScheme.surface,
-                iconTintColor = colorScheme.onSurface,
+                surfaceColor = colorScheme.surfaceVariant,
+                iconTintColor = colorScheme.onSurfaceVariant,
                 surfaceSize = 48.dp,
                 iconSize = 24.dp,
             )
