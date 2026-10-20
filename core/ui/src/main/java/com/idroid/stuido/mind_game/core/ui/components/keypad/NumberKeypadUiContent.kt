@@ -15,6 +15,11 @@ data class NumberKeypadUiContent(
     val digits: Int,
     /** 各数字剩余可填次数：索引 0..digits-1 对应数字 1..digits；为 0 时该键置灰且不可点。 */
     val remaining: List<Int>,
+    /**
+     * 剩余次数为 0 时仍可点的数字：宿主用于"笔记模式下移除该格已有的候选数字"
+     * 这类不消耗配额的回退操作；仅影响置灰/可点，不绕过全局 enabled。
+     */
+    val zeroCountEnabled: Set<Int> = emptySet(),
     /** 命中数字键时回调数字本身；派发 InputNumber 还是 ToggleNote 由宿主决定。 */
     val onDigit: (Int) -> Unit,
 )

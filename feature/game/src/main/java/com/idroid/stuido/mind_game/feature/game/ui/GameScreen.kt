@@ -166,10 +166,20 @@ fun GameScreen(
                             onHint = { dispatch(GameEvent.RequestHint) },
                             onSolve = { showSolveDialog = true },
                         )
+                        // 笔记模式下，选中格已有的候选数字即使剩余 0 也保持可点，便于再次点按移除。
+                        val noteDigitsAtSelection = if (
+                            state.selection.inputMode == InputMode.NOTE &&
+                            state.selection.index != null
+                        ) {
+                            state.board.notes[state.selection.index].orEmpty()
+                        } else {
+                            emptySet()
+                        }
                         NumberKeypad(
                             uiContent = NumberKeypadUiContent(
                                 digits = state.board.size,
                                 remaining = state.board.remainingCounts(),
+                                zeroCountEnabled = noteDigitsAtSelection,
                                 onDigit = ::pressDigit,
                             ),
                             uiConfig = NumberKeypadConfig(

@@ -2,6 +2,7 @@ package com.idroid.stuido.mind_game.core.ui.components.keypad
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -28,26 +29,36 @@ fun NumberKeypad(
     uiConfig: NumberKeypadConfig,
     uiStyle: NumberKeypadStyle,
 ) {
-    if (uiConfig.visibility.isHidden()) return
+    if (uiConfig.visibility.isHidden() || uiContent.digits <= 0) return
 
     Surface(modifier = modifier.fillMaxWidth()) {
-        Row(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 6.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
         ) {
-            for (digit in 1..uiContent.digits) {
-                val remaining = uiContent.remaining.getOrElse(digit - 1) { 0 }
-                KeyButton(
-                    digit = digit,
-                    remaining = remaining,
-                    enabled = uiConfig.enabled && remaining > 0,
-                    onClick = { uiContent.onDigit(digit) },
-                    uiStyle = uiStyle,
-                    modifier = Modifier.weight(1f),
-                )
+            // 窄屏（分屏/小窗）每格不足 keySize 时按格宽缩圆，避免相邻键重叠。
+            val keySize = (maxWidth / uiContent.digits - 4.dp)
+                .coerceAtMost(uiStyle.keySize)
+                .coerceAtLeast(16.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                for (digit in 1..uiContent.digits) {
+                    val remaining = uiContent.remaining.getOrElse(digit - 1) { 0 }
+                    KeyButton(
+                        digit = digit,
+                        remaining = remaining,
+                        enabled = uiConfig.enabled &&
+                            (remaining > 0 || digit in uiContent.zeroCountEnabled),
+                        onClick = { uiContent.onDigit(digit) },
+                        uiStyle = uiStyle,
+                        keySize = keySize,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
     }
@@ -61,12 +72,13 @@ private fun KeyButton(
     enabled: Boolean,
     onClick: () -> Unit,
     uiStyle: NumberKeypadStyle,
+    keySize: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Box {
             Surface(
-                modifier = Modifier.size(uiStyle.keySize),
+                modifier = Modifier.size(keySize),
                 shape = uiStyle.shape,
                 color = if (enabled) uiStyle.surfaceColor else uiStyle.disabledSurfaceColor,
                 shadowElevation = 2.dp,
