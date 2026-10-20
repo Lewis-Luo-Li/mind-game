@@ -4,6 +4,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import com.idroid.stuido.mind_game.core.ui.primitives.COMPACT_TYPO_WIDTH_DP
 import com.idroid.stuido.mind_game.core.ui.primitives.LocalFontSize
@@ -52,14 +53,14 @@ fun MindgameTheme(
     // 窄屏（<360dp）且调用方未自定义字号/排版时，自动切换紧凑字号档。
     val useCompactTypo = fontSize == defaultFontSize && typography === defaultTypography &&
         LocalConfiguration.current.screenWidthDp < COMPACT_TYPO_WIDTH_DP
+    val effectiveTypography = remember(useCompactTypo, fontFamily, typography) {
+        if (useCompactTypo) MindGameTypography.create(fontSize = compactFontSize, fontFamily = fontFamily)
+        else typography
+    }
     CompositionLocalProvider(
         LocalFontSize provides if (useCompactTypo) compactFontSize else fontSize,
         LocalMindGameFontFamily provides fontFamily,
-        LocalTypography provides if (useCompactTypo) {
-            MindGameTypography.create(fontSize = compactFontSize, fontFamily = fontFamily)
-        } else {
-            typography
-        },
+        LocalTypography provides effectiveTypography,
         LocalIconSet provides iconSet
     ) {
         MaterialTheme(
