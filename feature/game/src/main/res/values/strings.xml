@@ -19,6 +19,8 @@
     <string name="game_status_timer">Elapsed time (tap to pause or resume)</string>
     <string name="game_status_errors">Errors: %1$d/%2$d</string>
     <string name="game_status_hints">Hints: %1$d/%2$d</string>
+    <string name="cd_status_errors">Errors</string>
+    <string name="cd_status_hints">Hints</string>
 
     <!-- ===== 工具行按钮 ===== -->
     <string name="tool_undo">Undo</string>

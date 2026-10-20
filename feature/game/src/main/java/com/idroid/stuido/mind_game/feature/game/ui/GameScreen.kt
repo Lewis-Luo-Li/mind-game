@@ -206,7 +206,12 @@ fun GameScreen(
                             // 窄屏（<340dp）缩写为纯计数，防止省略号截掉数值。
                             StatusChipUiContent(
                                 icon = Theme.icons.error,
-                                contentDescription = null,
+                                // 缩写态由图标携带语义标签，读屏播「Errors, 0/3」。
+                                contentDescription = if (compactStatusRow) {
+                                    stringResource(R.string.cd_status_errors)
+                                } else {
+                                    null
+                                },
                                 text = if (compactStatusRow) {
                                     "${state.progress.mistakes}/${state.config.maxMistakes}"
                                 } else {
@@ -219,7 +224,11 @@ fun GameScreen(
                             ),
                             StatusChipUiContent(
                                 icon = Theme.icons.hint,
-                                contentDescription = null,
+                                contentDescription = if (compactStatusRow) {
+                                    stringResource(R.string.cd_status_hints)
+                                } else {
+                                    null
+                                },
                                 text = if (compactStatusRow) {
                                     "${state.hintsLeft}/${state.config.maxHints}"
                                 } else {
@@ -252,7 +261,8 @@ fun GameScreen(
                         .weight(1f),
                 ) {
                     // 棋盘边长取宽/剩余高/520dp 三者最小：矮屏与横屏完整可见、平板不变形。
-                    val boardSize = minOf(maxWidth, maxHeight, 520.dp)
+                    // 高度极低（多窗口/分屏）时保留 200dp 下限并交给纵向滚动，格子不至于不可用。
+                    val boardSize = minOf(maxWidth, maxOf(maxHeight, 200.dp), 520.dp)
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
