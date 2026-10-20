@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import com.idroid.stuido.mind_game.core.ui.components.text.BaseText
@@ -78,6 +79,11 @@ fun StatusChip(
             onClick = onClick,
         ) { content() }
     } else {
-        Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) { content() }
+        // 不可点项合并子语义：图标标签 + 计数作为一个读屏焦点（如「Errors, 0/3」），
+        // 否则缩写态的裸分数会被单独聚焦、无法识别归属。
+        Row(
+            modifier = modifier.semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically,
+        ) { content() }
     }
 }
