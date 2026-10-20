@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.idroid.stuido.mind_game.core.ui.util.isHidden
 
@@ -38,9 +39,7 @@ fun NumberKeypad(
                 .padding(horizontal = 6.dp, vertical = 8.dp),
         ) {
             // 窄屏（分屏/小窗）每格不足 keySize 时按键宽缩键，避免相邻键重叠。
-            val keySize = (maxWidth / uiContent.digits - 4.dp)
-                .coerceAtMost(uiStyle.keySize)
-                .coerceAtLeast(16.dp)
+            val keySize = keySizeForWidth(maxWidth, uiContent.digits, uiStyle.keySize)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -51,8 +50,12 @@ fun NumberKeypad(
                     KeyButton(
                         digit = digit,
                         remaining = remaining,
-                        enabled = uiConfig.enabled &&
-                            (remaining > 0 || digit in uiContent.zeroCountEnabled),
+                        enabled = isDigitKeyEnabled(
+                            enabled = uiConfig.enabled,
+                            remaining = remaining,
+                            digit = digit,
+                            zeroCountEnabled = uiContent.zeroCountEnabled,
+                        ),
                         onClick = { uiContent.onDigit(digit) },
                         uiStyle = uiStyle,
                         keySize = keySize,
@@ -64,6 +67,25 @@ fun NumberKeypad(
     }
 }
 
+/**
+ * 单键可点判定：全局未禁用，且（剩余次数 > 0，或宿主声明该数字在 0 剩余时仍可点，
+ * 如笔记模式下移除该格已有笔记）。
+ */
+internal fun isDigitKeyEnabled(
+    enabled: Boolean,
+    remaining: Int,
+    digit: Int,
+    zeroCountEnabled: Set<Int>,
+): Boolean = enabled && (remaining > 0 || digit in zeroCountEnabled)
+
+/**
+ * 键边长：每格可用宽 = maxWidth/digits，取 min(格宽 - 4dp 间隔, keySize)，下限 16dp。
+ */
+internal fun keySizeForWidth(maxWidth: Dp, digits: Int, keySize: Dp): Dp {
+    if (digits <= 0) return keySize
+    return (maxWidth / digits - 4.dp).coerceAtMost(keySize).coerceAtLeast(16.dp)
+}
+
 /** 单个数字键：圆角方形 + 居中数字 + 下缘剩余次数徽标。 */
 @Composable
 private fun KeyButton(
@@ -72,7 +94,7 @@ private fun KeyButton(
     enabled: Boolean,
     onClick: () -> Unit,
     uiStyle: NumberKeypadStyle,
-    keySize: androidx.compose.ui.unit.Dp,
+    keySize: Dp,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
