@@ -1,5 +1,6 @@
 package com.idroid.stuido.mind_game.core.ui.components.status
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
@@ -11,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import com.idroid.stuido.mind_game.core.ui.util.isHidden
 
 /**
@@ -33,7 +35,10 @@ fun StatusChip(
     val textColor = if (uiConfig.enabled) uiStyle.textColor else uiStyle.disabledContentColor
 
     val content: @Composable () -> Unit = {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
             Icon(
                 imageVector = uiContent.icon,
                 contentDescription = uiContent.contentDescription,
@@ -41,10 +46,25 @@ fun StatusChip(
                 modifier = Modifier.size(uiStyle.iconSize),
             )
             Spacer(Modifier.width(uiStyle.spacing))
-            Text(text = uiContent.text, color = textColor, style = uiStyle.textStyle)
+            // 文本限宽并单行省略：大字号/窄屏下项内内容不外溢。
+            Text(
+                text = uiContent.text,
+                color = textColor,
+                style = uiStyle.textStyle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
             if (uiContent.secondaryText != null) {
                 Spacer(Modifier.width(uiStyle.spacing))
-                Text(text = uiContent.secondaryText, color = textColor, style = uiStyle.secondaryTextStyle)
+                Text(
+                    text = uiContent.secondaryText,
+                    color = textColor,
+                    style = uiStyle.secondaryTextStyle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
             }
         }
     }

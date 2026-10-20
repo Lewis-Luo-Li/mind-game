@@ -2,6 +2,7 @@ package com.idroid.stuido.mind_game.feature.game.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
@@ -39,6 +41,7 @@ import com.idroid.stuido.mind_game.core.ui.components.keypad.NumberKeypadStyle
 import com.idroid.stuido.mind_game.core.ui.components.keypad.NumberKeypadUiContent
 import com.idroid.stuido.mind_game.core.ui.components.status.StatusChipStyle
 import com.idroid.stuido.mind_game.core.ui.components.status.StatusChipUiContent
+import com.idroid.stuido.mind_game.core.ui.components.text.TextConfig
 import com.idroid.stuido.mind_game.core.ui.components.status.StatusInfoRow
 import com.idroid.stuido.mind_game.core.ui.components.status.StatusInfoRowConfig
 import com.idroid.stuido.mind_game.core.ui.components.status.StatusInfoRowStyle
@@ -110,7 +113,9 @@ fun GameScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(inner),
+                .padding(inner)
+                // Scaffold 已发 top inset；消耗掉，TopBar 的 statusBarsPadding 不重复加。
+                .consumeWindowInsets(inner),
         ) {
             val colorScheme = MaterialTheme.colorScheme
             val navIconStyle = IconButtonStyle(
@@ -160,13 +165,17 @@ fun GameScreen(
                         ),
                     ),
                     uiConfig = TopBarUiConfig(
+                        // 生成中/未开局时隐藏齿轮：此刻无法暂停，避免开出来的对局在设置页后继续计时。
                         settingsButtonConfig = IconButtonConfig(
-                            visibility = if (onOpenSettings != null) {
+                            visibility = if (
+                                onOpenSettings != null && !state.progress.isBusy && state.board.size > 0
+                            ) {
                                 VisibilityConfig.VISIBLE
                             } else {
                                 VisibilityConfig.HIDDEN
                             },
                         ),
+                        titleConfig = TextConfig(maxLine = 1, overflow = TextOverflow.Ellipsis),
                     ),
                     uiStyle = TopBarUiStyle(
                         topbarBgColor = colorScheme.surface,
@@ -185,13 +194,10 @@ fun GameScreen(
                                 text = formatTimer(state.progress.timerSeconds),
                                 onClick = { dispatch(GameEvent.TogglePause) },
                             ),
+                            // 图标纯装饰（文本自描述），contentDescription 传 null 避免读屏重复播报。
                             StatusChipUiContent(
                                 icon = Theme.icons.error,
-                                contentDescription = stringResource(
-                                    R.string.game_status_errors,
-                                    state.progress.mistakes,
-                                    state.config.maxMistakes,
-                                ),
+                                contentDescription = null,
                                 text = stringResource(
                                     R.string.game_status_errors,
                                     state.progress.mistakes,
@@ -200,11 +206,7 @@ fun GameScreen(
                             ),
                             StatusChipUiContent(
                                 icon = Theme.icons.hint,
-                                contentDescription = stringResource(
-                                    R.string.game_status_hints,
-                                    state.hintsLeft,
-                                    state.config.maxHints,
-                                ),
+                                contentDescription = null,
                                 text = stringResource(
                                     R.string.game_status_hints,
                                     state.hintsLeft,

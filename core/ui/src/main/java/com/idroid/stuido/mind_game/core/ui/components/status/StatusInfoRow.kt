@@ -34,10 +34,13 @@ fun StatusInfoRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             uiContent.items.forEach { item ->
+                // 每项等宽一格并居中：保证 N 项均匀铺满且不相互挤压出屏（大字号下
+                // 项内文本由 StatusChip 单行省略承接）。
                 StatusChip(
                     uiContent = item,
                     uiConfig = StatusChipConfig(enabled = uiConfig.enabled),
                     uiStyle = uiStyle.chipStyle,
+                    modifier = Modifier.weight(1f),
                 )
             }
         }

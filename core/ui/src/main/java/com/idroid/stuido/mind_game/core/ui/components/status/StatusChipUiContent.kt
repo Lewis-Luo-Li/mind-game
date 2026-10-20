@@ -11,7 +11,8 @@ import com.idroid.stuido.mind_game.core.ui.util.VisibilityConfig
 @Immutable
 data class StatusChipUiContent(
     val icon: ImageVector,
-    val contentDescription: String,
+    /** 图标的无障碍描述；纯装饰图标（旁边的文本已自描述）传 null。 */
+    val contentDescription: String?,
     val text: String,
     /** 主文本右侧的次要文本（如单位/状态标注）；null 表示不显示。 */
     val secondaryText: String? = null,

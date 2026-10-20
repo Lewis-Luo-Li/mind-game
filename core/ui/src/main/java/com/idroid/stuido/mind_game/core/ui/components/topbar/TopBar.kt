@@ -42,8 +42,21 @@ fun TopBar(
         }
 
         if (uiConfig.titleConfig.visibility.isVisible()) {
+            // 标题约束在两端按钮之间：长标题不压到按钮上（配合 titleConfig 单行省略）。
+            val titleStartPad = if (uiConfig.backButtonConfig.visibility.isVisible()) {
+                uiStyle.backButtonStyle.surfaceSize + 4.dp
+            } else {
+                0.dp
+            }
+            val titleEndPad = if (uiConfig.settingsButtonConfig.visibility.isVisible()) {
+                uiStyle.settingsButtonStyle.surfaceSize + 4.dp
+            } else {
+                0.dp
+            }
             BaseText(
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(start = titleStartPad, end = titleEndPad),
                 text = AnnotatedString(uiContent.topBarTitle),
                 style = Theme.typography.titleStyleSemiBold,
                 config = uiConfig.titleConfig,
