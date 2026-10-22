@@ -18,8 +18,8 @@ case "${1:-}" in
     encrypt)
         [[ -f "$PLAIN" ]] || { echo "error: $PLAIN not found" >&2; exit 1; }
         if [[ -n "${GPG_PASSPHRASE:-}" ]]; then
-            gpg --batch --yes --symmetric --cipher-algo AES256 \
-                --passphrase "$GPG_PASSPHRASE" --output "$ENC" "$PLAIN"
+            printf '%s' "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+                --passphrase-fd 0 --symmetric --cipher-algo AES256 --output "$ENC" "$PLAIN"
         else
             gpg --symmetric --cipher-algo AES256 --output "$ENC" "$PLAIN"
         fi
@@ -28,8 +28,8 @@ case "${1:-}" in
     decrypt)
         [[ -f "$ENC" ]] || { echo "error: $ENC not found" >&2; exit 1; }
         if [[ -n "${GPG_PASSPHRASE:-}" ]]; then
-            gpg --batch --yes --decrypt \
-                --passphrase "$GPG_PASSPHRASE" --output "$PLAIN" "$ENC"
+            printf '%s' "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+                --passphrase-fd 0 --decrypt --output "$PLAIN" "$ENC"
         else
             gpg --decrypt --output "$PLAIN" "$ENC"
         fi
