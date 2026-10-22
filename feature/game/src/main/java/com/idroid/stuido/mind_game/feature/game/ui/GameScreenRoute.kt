@@ -83,8 +83,7 @@ fun GameScreenRoute(
     // 同一局实例的终局只计一次局数：复活后再次到达终局不再重复计数。
     // 以 vm 为 key——新会话（新 ViewModel、gameInstance 归 1）重新计数。
     var countedGameInstance by remember(vm) { mutableStateOf(-1) }
-    fun firstFinishOfInstance(): Boolean {
-        val instance = vm.uiState.value.progress.gameInstance
+    fun firstFinishOfInstance(instance: Int): Boolean {
         if (instance == countedGameInstance) return false
         countedGameInstance = instance
         return true
@@ -106,13 +105,13 @@ fun GameScreenRoute(
                 // 终局：先让玩家看到结算面板，再交给宿主做插页广告频控判定。
                 is GameEffect.PuzzleCompleted -> {
                     delay(FINISH_CALLBACK_DELAY_MS)
-                    onGameFinished(GameOutcome.SOLVED, firstFinishOfInstance())
+                    onGameFinished(GameOutcome.SOLVED, firstFinishOfInstance(effect.gameInstance))
                 }
                 is GameEffect.SolutionRevealed -> {
                     delay(FINISH_CALLBACK_DELAY_MS)
-                    onGameFinished(GameOutcome.REVEALED, firstFinishOfInstance())
+                    onGameFinished(GameOutcome.REVEALED, firstFinishOfInstance(effect.gameInstance))
                 }
-                is GameEffect.GameOver -> onGameFinished(GameOutcome.FAILED, firstFinishOfInstance())
+                is GameEffect.GameOver -> onGameFinished(GameOutcome.FAILED, firstFinishOfInstance(effect.gameInstance))
                 else -> Unit
             }
         }

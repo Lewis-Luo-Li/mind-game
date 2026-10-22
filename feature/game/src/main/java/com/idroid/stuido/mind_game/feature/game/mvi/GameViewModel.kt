@@ -210,7 +210,7 @@ class GameViewModel(
         _effect.trySend(GameEffect.ShowMessage("❌ Doesn't match the solution (+1)"))
         if (exceeds) {
             _uiState.update { GameReducer.finish(it, GameOutcome.FAILED) }
-            _effect.trySend(GameEffect.GameOver)
+            _effect.trySend(GameEffect.GameOver(_uiState.value.progress.gameInstance))
         }
     }
 
@@ -259,12 +259,12 @@ class GameViewModel(
     /** 自动求解（演示）：铺满终盘后走完成流程。 */
     private fun solve() {
         _uiState.update { GameReducer.finish(GameReducer.revealSolution(it), GameOutcome.REVEALED) }
-        _effect.trySend(GameEffect.SolutionRevealed)
+        _effect.trySend(GameEffect.SolutionRevealed(_uiState.value.progress.gameInstance))
     }
 
     private fun finishAsSuccess() {
         _uiState.update { GameReducer.finish(it, GameOutcome.SOLVED) }
-        _effect.trySend(GameEffect.PuzzleCompleted)
+        _effect.trySend(GameEffect.PuzzleCompleted(_uiState.value.progress.gameInstance))
     }
 
     // ---------------------------------------------------------------- 暂停 / 计时

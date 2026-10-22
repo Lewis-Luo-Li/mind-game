@@ -98,7 +98,7 @@ class GameViewModelTest {
 
         assertEquals(GameStatus.FINISHED, vm.uiState.value.progress.status)
         assertEquals(GameOutcome.SOLVED, vm.uiState.value.progress.outcome)
-        assertTrue(effects.contains(GameEffect.PuzzleCompleted))
+        assertTrue(effects.any { it is GameEffect.PuzzleCompleted })
     }
 
     @Test
@@ -116,7 +116,7 @@ class GameViewModelTest {
 
         assertEquals(GameStatus.FINISHED, vm.uiState.value.progress.status)
         assertEquals(GameOutcome.FAILED, vm.uiState.value.progress.outcome)
-        assertTrue(effects.contains(GameEffect.GameOver))
+        assertTrue(effects.any { it is GameEffect.GameOver })
 
         val valuesAfterFailure = vm.uiState.value.board.values
         val index = board.values.indices.first { it !in board.givens }
@@ -243,8 +243,8 @@ class GameViewModelTest {
         assertEquals(GameStatus.FINISHED, vm.uiState.value.progress.status)
         assertEquals(GameOutcome.REVEALED, vm.uiState.value.progress.outcome)
         assertEquals(vm.uiState.value.board.solution, vm.uiState.value.board.values)
-        assertTrue(effects.contains(GameEffect.SolutionRevealed))
-        assertFalse(effects.contains(GameEffect.PuzzleCompleted))
+        assertTrue(effects.any { it is GameEffect.SolutionRevealed })
+        assertFalse(effects.any { it is GameEffect.PuzzleCompleted })
     }
 
     @Test
