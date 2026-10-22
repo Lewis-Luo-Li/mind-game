@@ -33,19 +33,20 @@ interface RewardedAdController {
 }
 
 /**
- * 插页广告控制器。[maybeShow] 仅在已预载完成时返回 true 并展示；
+ * 插页广告控制器。[maybeShow] 仅在已预载完成时返回 true 并开始展示；
+ * [onShown] 在 SDK 确认画面真正弹出后才回调（频控应以此为准，展示失败不计入）。
  * 实现方在每次展示后自行预载下一条。
  */
 interface InterstitialController {
     fun preload()
 
-    fun maybeShow(context: Context): Boolean
+    fun maybeShow(context: Context, onShown: () -> Unit = {}): Boolean
 
     companion object {
         /** 广告关闭时的空实现：永不展示。 */
         val NOOP: InterstitialController = object : InterstitialController {
             override fun preload() = Unit
-            override fun maybeShow(context: Context): Boolean = false
+            override fun maybeShow(context: Context, onShown: () -> Unit): Boolean = false
         }
     }
 }
@@ -95,7 +96,7 @@ class InterstitialFrequencyGate(
     var lastShownAtMs: Long? = null
         private set
 
-    /** 每完成一局调用一次（任何 outcome 都算一局）。 */
+    /** 每完成一局调用一次（任何 outcome 都算一局；调用方按 gameInstance 去重）。 */
     fun recordGameFinished() {
         gamesCompletedSinceShow++
     }

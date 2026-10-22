@@ -5,8 +5,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
@@ -42,8 +44,10 @@ private const val FINISH_CALLBACK_DELAY_MS = 1_200L
  * @param rewardedAds 激励广告控制器；ads.enabled=false 时宿主传
  *                    [FakeRewardedAdController]（点按直接发奖）。
  * @param bannerAd   底部横幅插槽；null = 广告关闭，不预留高度。
- * @param onGameFinished 每次对局结束（SOLVED/REVEALED/FAILED）回调给宿主，
- *                       用于插页广告频控与展示。
+ * @param onGameFinished 每次对局到达终局态（SOLVED/REVEALED/FAILED）回调给宿主，
+ *                       用于插页广告频控与展示。[firstFinish] 标记同一局实例
+ *                       首次到达终局（激励复活后再次终局时为 false）——频控局数
+ *                       只在首次时计入，避免一局复活多次被算作多局。
  */
 @Composable
 fun GameScreenRoute(
@@ -59,7 +63,7 @@ fun GameScreenRoute(
     rewards: RewardsSection = RewardsSection(),
     rewardedAds: RewardedAdController = FakeRewardedAdController(),
     bannerAd: BannerAdSlot? = null,
-    onGameFinished: (GameOutcome) -> Unit = {},
+    onGameFinished: (outcome: GameOutcome, firstFinish: Boolean) -> Unit = { _, _ -> },
     showDebugSolve: Boolean = false,
     sessionKey: String = "default-session",
 ) {
@@ -75,6 +79,16 @@ fun GameScreenRoute(
         )
     }
     val state by vm.uiState.collectAsState()
+
+    // 同一局实例的终局只计一次局数：复活后再次到达终局不再重复计数。
+    // 以 vm 为 key——新会话（新 ViewModel、gameInstance 归 1）重新计数。
+    var countedGameInstance by remember(vm) { mutableStateOf(-1) }
+    fun firstFinishOfInstance(): Boolean {
+        val instance = vm.uiState.value.progress.gameInstance
+        if (instance == countedGameInstance) return false
+        countedGameInstance = instance
+        return true
+    }
 
     // 首次进入（本会话挂载）自动开局（生成 + 铺盘）；后续由 Restart / FinishPanel 驱动。
     LaunchedEffect(vm) {
@@ -92,13 +106,13 @@ fun GameScreenRoute(
                 // 终局：先让玩家看到结算面板，再交给宿主做插页广告频控判定。
                 is GameEffect.PuzzleCompleted -> {
                     delay(FINISH_CALLBACK_DELAY_MS)
-                    onGameFinished(GameOutcome.SOLVED)
+                    onGameFinished(GameOutcome.SOLVED, firstFinishOfInstance())
                 }
                 is GameEffect.SolutionRevealed -> {
                     delay(FINISH_CALLBACK_DELAY_MS)
-                    onGameFinished(GameOutcome.REVEALED)
+                    onGameFinished(GameOutcome.REVEALED, firstFinishOfInstance())
                 }
-                is GameEffect.GameOver -> onGameFinished(GameOutcome.FAILED)
+                is GameEffect.GameOver -> onGameFinished(GameOutcome.FAILED, firstFinishOfInstance())
                 else -> Unit
             }
         }

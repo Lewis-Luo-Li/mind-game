@@ -123,15 +123,15 @@ fun MindGameApp(themePrefs: ThemePrefs) {
             rewards = gameConfig.rewards,
             rewardedAds = rewardedAds,
             bannerAd = bannerAd,
-            onGameFinished = { outcome ->
-                interstitialGate.recordGameFinished()
+            onGameFinished = { outcome, firstFinish ->
+                // 一局只计一次（复活后的二次终局不再计入局数）。
+                if (firstFinish) interstitialGate.recordGameFinished()
                 // FAILED 由激励广告复活承接，不播插页；SOLVED/REVEALED 满足
-                // ads.interstitial 的局数/秒数下限才播，播后立即预载下一条。
+                // ads.interstitial 的局数/秒数下限才播，SDK 确认弹出后才 recordShown。
                 if (outcome != GameOutcome.FAILED &&
-                    interstitialGate.shouldShow(gameConfig.ads.interstitial, adsEnabled) &&
-                    interstitialAds.maybeShow(context)
+                    interstitialGate.shouldShow(gameConfig.ads.interstitial, adsEnabled)
                 ) {
-                    interstitialGate.recordShown()
+                    interstitialAds.maybeShow(context) { interstitialGate.recordShown() }
                 }
             },
             showDebugSolve = BuildConfig.DEBUG,

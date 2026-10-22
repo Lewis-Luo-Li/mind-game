@@ -12,7 +12,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
@@ -49,7 +48,6 @@ internal tailrec fun Context.findActivity(): Activity? = when (this) {
  */
 @Composable
 fun AdMobBanner(modifier: Modifier, reloadKey: Any?) {
-    val context = LocalContext.current
     var adView by remember { mutableStateOf<AdView?>(null) }
     AndroidView(
         modifier = modifier,
@@ -64,27 +62,25 @@ fun AdMobBanner(modifier: Modifier, reloadKey: Any?) {
                 }
             }.also { adView = it }
         },
+        // 销毁交给 AndroidView 生命周期：离开组合时统一 onRelease，
+        // 不在 DisposableEffect 的 onDispose 里读共享 adView 状态。
+        onRelease = { it.destroy() },
     )
     LaunchedEffect(adView, reloadKey) {
         adView?.loadAd(AdRequest.Builder().build())
     }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(adView, lifecycleOwner) {
-        val lifecycle = lifecycleOwner.lifecycle
+        val view = adView
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_PAUSE -> adView?.pause()
-                Lifecycle.Event.ON_RESUME -> adView?.resume()
-                Lifecycle.Event.ON_DESTROY -> adView?.destroy()
+                Lifecycle.Event.ON_PAUSE -> view?.pause()
+                Lifecycle.Event.ON_RESUME -> view?.resume()
                 else -> Unit
             }
         }
-        lifecycle?.addObserver(observer)
-        onDispose {
-            lifecycle?.removeObserver(observer)
-            adView?.destroy()
-            adView = null
-        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 }
 
@@ -202,7 +198,7 @@ class AdMobInterstitialController(context: Context) : InterstitialController {
         )
     }
 
-    override fun maybeShow(context: Context): Boolean {
+    override fun maybeShow(context: Context, onShown: () -> Unit): Boolean {
         val activity = context.findActivity() ?: return false
         val current = ad ?: run {
             preload()
@@ -210,7 +206,11 @@ class AdMobInterstitialController(context: Context) : InterstitialController {
         }
         ad = null
         current.fullScreenContentCallback = object : FullScreenContentCallback() {
+            // 只有 SDK 确认画面真正弹出才算一次展示（频控计时以此为原点）。
+            override fun onAdShowedFullScreenContent() = onShown()
+
             override fun onAdDismissedFullScreenContent() = preload()
+
             override fun onAdFailedToShowFullScreenContent(error: AdError) = preload()
         }
         current.show(activity)
