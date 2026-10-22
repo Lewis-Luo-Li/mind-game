@@ -1,4 +1,5 @@
 import com.android.build.api.dsl.ApplicationExtension
+import com.android.build.api.dsl.VariantDimension
 import java.util.Properties
 
 plugins {
@@ -6,18 +7,27 @@ plugins {
     id("mindgame.android.application.compose")
 }
 
-// Real AdMob IDs can be supplied via a root secret.properties (gitignored);
-// Google's official test IDs are the fallback so debug/CI/emulator builds are safe.
+// Debug builds always use Google's official test ad IDs — live ads must never
+// be tapped on dev devices (invalid traffic). Release builds read the real IDs
+// from a root secret.properties (gitignored), falling back to test IDs.
+val adMobTestAppId = "ca-app-pub-3940256099942544~3347511713"
+val adMobTestBannerUnitId = "ca-app-pub-3940256099942544/6300978111"
+val adMobTestInterstitialUnitId = "ca-app-pub-3940256099942544/1033173712"
+val adMobTestRewardedUnitId = "ca-app-pub-3940256099942544/5224354917"
+
 val adMobProps = Properties().apply {
     val file = rootProject.file("secret.properties")
     if (file.exists()) file.inputStream().use { load(it) }
 }
 fun adMobId(key: String, testId: String): String = adMobProps.getProperty(key) ?: testId
 
-val adMobAppId = adMobId("ADMOB_APP_ID", "ca-app-pub-3940256099942544~3347511713")
-val adMobBannerUnitId = adMobId("ADMOB_BANNER_UNIT_ID", "ca-app-pub-3940256099942544/6300978111")
-val adMobInterstitialUnitId = adMobId("ADMOB_INTERSTITIAL_UNIT_ID", "ca-app-pub-3940256099942544/1033173712")
-val adMobRewardedUnitId = adMobId("ADMOB_REWARDED_UNIT_ID", "ca-app-pub-3940256099942544/5224354917")
+fun VariantDimension.adMobFields(appId: String, banner: String, interstitial: String, rewarded: String) {
+    buildConfigField("String", "ADMOB_APP_ID", "\"$appId\"")
+    buildConfigField("String", "ADMOB_BANNER_UNIT_ID", "\"$banner\"")
+    buildConfigField("String", "ADMOB_INTERSTITIAL_UNIT_ID", "\"$interstitial\"")
+    buildConfigField("String", "ADMOB_REWARDED_UNIT_ID", "\"$rewarded\"")
+    manifestPlaceholders["admobAppId"] = appId
+}
 
 extensions.configure<ApplicationExtension> {
     namespace = Config.APPLICATION_ID
@@ -28,11 +38,20 @@ extensions.configure<ApplicationExtension> {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "ADMOB_APP_ID", "\"$adMobAppId\"")
-        buildConfigField("String", "ADMOB_BANNER_UNIT_ID", "\"$adMobBannerUnitId\"")
-        buildConfigField("String", "ADMOB_INTERSTITIAL_UNIT_ID", "\"$adMobInterstitialUnitId\"")
-        buildConfigField("String", "ADMOB_REWARDED_UNIT_ID", "\"$adMobRewardedUnitId\"")
-        manifestPlaceholders["admobAppId"] = adMobAppId
+        adMobFields(adMobTestAppId, adMobTestBannerUnitId, adMobTestInterstitialUnitId, adMobTestRewardedUnitId)
+    }
+    buildTypes {
+        getByName("release") {
+            if (adMobProps.getProperty("ADMOB_APP_ID") == null) {
+                logger.warn("secret.properties missing ADMOB_* keys — release will serve TEST ads")
+            }
+            adMobFields(
+                adMobId("ADMOB_APP_ID", adMobTestAppId),
+                adMobId("ADMOB_BANNER_UNIT_ID", adMobTestBannerUnitId),
+                adMobId("ADMOB_INTERSTITIAL_UNIT_ID", adMobTestInterstitialUnitId),
+                adMobId("ADMOB_REWARDED_UNIT_ID", adMobTestRewardedUnitId),
+            )
+        }
     }
 }
 
