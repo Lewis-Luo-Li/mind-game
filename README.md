@@ -172,7 +172,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    UI["GameScreen<br/>(Compose)"] -- "GameEvent<br/>SelectCell / InputNumber / ToggleNote /<br/>Erase / Undo / Hint / Check / Solve / TogglePause /<br/>RetrySamePuzzle / Restart" --> VM["GameViewModel.dispatch()"]
+    UI["GameScreen<br/>(Compose)"] -- "GameEvent<br/>SelectCell / InputNumber / ToggleNote /<br/>Erase / Undo / Hint / Check / Solve / TogglePause /<br/>RetrySamePuzzle / Restart /<br/>GrantRewardedHints / GrantRewardedLives" --> VM["GameViewModel.dispatch()"]
     VM --> R["GameReducer<br/>(pure functions)"]
     VM --> E["engine<br/>HintProvider · InputValidator · GameFactory"]
     R --> S[("GameUiState<br/>StateFlow")]

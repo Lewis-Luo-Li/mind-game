@@ -2,6 +2,8 @@ package com.idroid.stuido.mind_game.feature.game.mvi
 
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
+import com.idroid.stuido.mind_game.core.logic.config.RewardRule
+import com.idroid.stuido.mind_game.core.logic.config.RewardsSection
 import com.idroid.stuido.mind_game.feature.game.GameMode
 import com.idroid.stuido.mind_game.feature.game.GameOutcome
 import com.idroid.stuido.mind_game.feature.game.GameStatus
@@ -87,5 +89,73 @@ class GameUiStateTest {
         )
         assertEquals(0, exhausted.hintsLeft)
         assertEquals(0, exhausted.livesLeft)
+    }
+
+    // ===== 激励广告奖励：可用性判定（enabled / max_per_game / allow_in_daily） =====
+
+    private fun stateWithRewards(
+        mode: GameMode = GameMode.FREE,
+        extraHint: RewardRule = RewardRule(enabled = true, amount = 1, maxPerGame = 3),
+        extraLife: RewardRule = RewardRule(enabled = true, amount = 1, maxPerGame = 2),
+        hintRewardsUsed: Int = 0,
+        lifeRewardsUsed: Int = 0,
+    ) = GameUiState(
+        config = GameConfig(
+            mode = mode,
+            rewards = RewardsSection(extraLife = extraLife, extraHint = extraHint),
+        ),
+        progress = GameProgress(
+            status = GameStatus.RUNNING,
+            hintRewardsUsed = hintRewardsUsed,
+            lifeRewardsUsed = lifeRewardsUsed,
+        ),
+    )
+
+    @Test
+    fun `reward available when enabled and under per-game cap`() {
+        val s = stateWithRewards()
+        assertTrue(s.hintRewardAvailable)
+        assertTrue(s.lifeRewardAvailable)
+    }
+
+    @Test
+    fun `reward unavailable once per-game cap reached`() {
+        val s = stateWithRewards(hintRewardsUsed = 3, lifeRewardsUsed = 2)
+        assertFalse(s.hintRewardAvailable)
+        assertFalse(s.lifeRewardAvailable)
+    }
+
+    @Test
+    fun `reward unavailable when rule disabled`() {
+        val s = stateWithRewards(
+            extraHint = RewardRule(enabled = false, amount = 1, maxPerGame = 3),
+            extraLife = RewardRule(enabled = false, amount = 1, maxPerGame = 2),
+        )
+        assertFalse(s.hintRewardAvailable)
+        assertFalse(s.lifeRewardAvailable)
+    }
+
+    @Test
+    fun `daily mode blocks rewards when allow_in_daily is false`() {
+        val rule = RewardRule(enabled = true, amount = 1, maxPerGame = 3, allowInDaily = false)
+        val daily = stateWithRewards(mode = GameMode.DAILY, extraHint = rule, extraLife = rule)
+        assertFalse(daily.hintRewardAvailable)
+        assertFalse(daily.lifeRewardAvailable)
+
+        val free = stateWithRewards(mode = GameMode.FREE, extraHint = rule, extraLife = rule)
+        assertTrue(free.hintRewardAvailable)
+        assertTrue(free.lifeRewardAvailable)
+    }
+
+    @Test
+    fun `bonus hints and lives raise the effective totals`() {
+        val s = GameUiState(
+            config = GameConfig(maxMistakes = 3, maxHints = 2),
+            progress = GameProgress(bonusHints = 2, bonusLives = 1, hintsUsed = 3, mistakes = 3),
+        )
+        assertEquals(4, s.hintsTotal)
+        assertEquals(4, s.livesTotal)
+        assertEquals(1, s.hintsLeft)
+        assertEquals(1, s.livesLeft)
     }
 }

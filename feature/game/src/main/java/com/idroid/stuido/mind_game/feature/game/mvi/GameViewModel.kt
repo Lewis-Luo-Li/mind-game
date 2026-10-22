@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
+import com.idroid.stuido.mind_game.core.logic.config.RewardsSection
 import com.idroid.stuido.mind_game.feature.game.GameMode
 import com.idroid.stuido.mind_game.feature.game.GameOutcome
 import com.idroid.stuido.mind_game.feature.game.GameStatus
@@ -64,11 +65,15 @@ class GameViewModel(
     fun dispatch(event: GameEvent) {
         when (event) {
             is GameEvent.NewGame -> newGame(
-                event.mode, event.spec, event.difficulty, event.seed, event.maxMistakes, event.maxHints,
+                event.mode, event.spec, event.difficulty, event.seed,
+                event.maxMistakes, event.maxHints, event.rewards,
             )
 
             GameEvent.Restart -> lastRequest?.let { cfg ->
-                newGame(cfg.mode, cfg.spec, cfg.difficulty, cfg.seed, cfg.maxMistakes, cfg.maxHints)
+                newGame(
+                    cfg.mode, cfg.spec, cfg.difficulty, cfg.seed,
+                    cfg.maxMistakes, cfg.maxHints, cfg.rewards,
+                )
             }
             GameEvent.RetrySamePuzzle -> retrySamePuzzle()
             GameEvent.Exit -> Unit // 退出由宿主（onExit）完成，不在此处理
@@ -87,6 +92,13 @@ class GameViewModel(
 
             GameEvent.ToggleNoteMode -> _uiState.update { GameReducer.toggleNoteMode(it) }
             GameEvent.RequestHint -> ifRunning { requestHint() }
+            is GameEvent.GrantRewardedHints -> ifRunning {
+                _uiState.update { GameReducer.grantRewardedHints(it, event.amount) }
+            }
+            is GameEvent.GrantRewardedLives -> {
+                // 复活入口在 FINISHED(FAILED) 面板，不走 ifRunning。
+                _uiState.update { GameReducer.grantRewardedLives(it, event.amount) }
+            }
             GameEvent.RequestCheck -> ifRunning { requestCheck() }
             GameEvent.RequestSolve -> ifRunning { solve() }
 
@@ -104,6 +116,7 @@ class GameViewModel(
         seed: Long?,
         maxMistakes: Int,
         maxHints: Int,
+        rewards: RewardsSection,
     ) {
         if (_uiState.value.progress.isBusy) return
         val config = GameConfig(
@@ -113,6 +126,7 @@ class GameViewModel(
             seed = seed,
             maxMistakes = maxMistakes,
             maxHints = maxHints,
+            rewards = rewards,
         )
         lastRequest = config
         _uiState.update { GameReducer.setBusy(GameReducer.setGameConfig(it, config), true) }
@@ -190,12 +204,13 @@ class GameViewModel(
 
     private fun registerMistake() {
         val state = _uiState.value
-        val exceeds = state.progress.mistakes + 1 >= state.config.maxMistakes
+        // livesTotal 含激励广告补充的 bonusLives：复活后再错一次仍正常结束。
+        val exceeds = state.progress.mistakes + 1 >= state.livesTotal
         _uiState.update { GameReducer.incrementMistakes(it) }
         _effect.trySend(GameEffect.ShowMessage("❌ Doesn't match the solution (+1)"))
         if (exceeds) {
             _uiState.update { GameReducer.finish(it, GameOutcome.FAILED) }
-            _effect.trySend(GameEffect.GameOver)
+            _effect.trySend(GameEffect.GameOver(_uiState.value.progress.gameInstance))
         }
     }
 
@@ -244,12 +259,12 @@ class GameViewModel(
     /** 自动求解（演示）：铺满终盘后走完成流程。 */
     private fun solve() {
         _uiState.update { GameReducer.finish(GameReducer.revealSolution(it), GameOutcome.REVEALED) }
-        _effect.trySend(GameEffect.SolutionRevealed)
+        _effect.trySend(GameEffect.SolutionRevealed(_uiState.value.progress.gameInstance))
     }
 
     private fun finishAsSuccess() {
         _uiState.update { GameReducer.finish(it, GameOutcome.SOLVED) }
-        _effect.trySend(GameEffect.PuzzleCompleted)
+        _effect.trySend(GameEffect.PuzzleCompleted(_uiState.value.progress.gameInstance))
     }
 
     // ---------------------------------------------------------------- 暂停 / 计时

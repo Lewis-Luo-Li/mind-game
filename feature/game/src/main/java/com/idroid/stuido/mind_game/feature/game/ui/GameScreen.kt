@@ -1,5 +1,6 @@
 package com.idroid.stuido.mind_game.feature.game.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -62,6 +64,7 @@ import com.idroid.stuido.mind_game.feature.game.GameMode
 import com.idroid.stuido.mind_game.feature.game.GameOutcome
 import com.idroid.stuido.mind_game.feature.game.GameStatus
 import com.idroid.stuido.mind_game.feature.game.R
+import com.idroid.stuido.mind_game.feature.game.ads.BannerAdSlot
 import com.idroid.stuido.mind_game.feature.game.mvi.BoardCells
 import com.idroid.stuido.mind_game.feature.game.mvi.GameConfig
 import com.idroid.stuido.mind_game.feature.game.mvi.GameEvent
@@ -97,6 +100,14 @@ fun GameScreen(
     onOpenSettings: (() -> Unit)? = null,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     showDebugSolve: Boolean = false,
+    /** 提示用尽且可领广告奖励时非 null：点击 Hint 改为发起激励广告。 */
+    onHintAd: (() -> Unit)? = null,
+    /** 出局面板可领命数奖励时非 null：展示“看广告 +N 命”主按钮。 */
+    onLifeAd: (() -> Unit)? = null,
+    /** 底部锚定横幅插槽（ads.enabled=false 时为 null，不预留高度）。 */
+    bannerAd: BannerAdSlot? = null,
+    /** 横幅重载键：开局/重开变化时触发新一轮加载。 */
+    bannerReloadKey: Any? = null,
 ) {
     val status = state.progress.status
     val finished = status == GameStatus.FINISHED
@@ -213,12 +224,12 @@ fun GameScreen(
                                     null
                                 },
                                 text = if (compactStatusRow) {
-                                    "${state.progress.mistakes}/${state.config.maxMistakes}"
+                                    "${state.progress.mistakes}/${state.livesTotal}"
                                 } else {
                                     stringResource(
                                         R.string.game_status_errors,
                                         state.progress.mistakes,
-                                        state.config.maxMistakes,
+                                        state.livesTotal,
                                     )
                                 },
                             ),
@@ -230,12 +241,12 @@ fun GameScreen(
                                     null
                                 },
                                 text = if (compactStatusRow) {
-                                    "${state.hintsLeft}/${state.config.maxHints}"
+                                    "${state.hintsLeft}/${state.hintsTotal}"
                                 } else {
                                     stringResource(
                                         R.string.game_status_hints,
                                         state.hintsLeft,
-                                        state.config.maxHints,
+                                        state.hintsTotal,
                                     )
                                 },
                             ),
@@ -289,6 +300,9 @@ fun GameScreen(
                     }
                 }
 
+                // 提示用尽且仍可领奖励时，Hint 钮切为「看广告得提示」入口（+N 角标，无位移）。
+                val hintAdAvailable = state.hintsLeft == 0 &&
+                    state.hintRewardAvailable && onHintAd != null
                 // 底部固定区（mockup 的 thumb-easy zone）：工具行 + 数字键盘，不随棋盘滚动。
                 if (!state.progress.isBusy && state.board.size > 0) {
                     Column(
@@ -301,12 +315,31 @@ fun GameScreen(
                             canUndo = state.canUndo && state.progress.isRunning,
                             noteMode = state.selection.inputMode == InputMode.NOTE,
                             canErase = state.selection.index?.let { it !in state.board.givens } ?: false,
-                            hintsLeft = state.hintsLeft,
+                            hintBadge = if (hintAdAvailable) {
+                                "+${state.config.rewards.extraHint.amount}"
+                            } else {
+                                state.hintsLeft.toString()
+                            },
+                            hintEnabled = state.hintsLeft > 0 || hintAdAvailable,
+                            hintContentDescription = if (hintAdAvailable) {
+                                stringResource(
+                                    R.string.cd_hint_reward_ad,
+                                    state.config.rewards.extraHint.amount,
+                                )
+                            } else {
+                                stringResource(R.string.tool_hint)
+                            },
                             showDebugSolve = showDebugSolve,
                             onUndo = { dispatch(GameEvent.Undo) },
                             onNoteMode = { dispatch(GameEvent.ToggleNoteMode) },
                             onErase = { dispatch(GameEvent.Erase) },
-                            onHint = { dispatch(GameEvent.RequestHint) },
+                            onHint = {
+                                if (state.hintsLeft > 0) {
+                                    dispatch(GameEvent.RequestHint)
+                                } else {
+                                    onHintAd?.invoke()
+                                }
+                            },
                             onSolve = { showSolveDialog = true },
                         )
                         // 笔记模式下，选中格已有的候选数字即使剩余 0 也保持可点，便于再次点按移除。
@@ -333,6 +366,26 @@ fun GameScreen(
                         )
                     }
                 }
+
+                // 横幅固定槽：常驻 50dp + 系统导航栏避让。广告加载失败也只留白，
+                // 不回收高度，避免棋盘/键盘位移误触。与键盘之间保留间距分隔。
+                if (bannerAd != null) {
+                    Spacer(Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .height(50.dp)
+                            .background(colorScheme.secondaryContainer),
+                    ) {
+                        bannerAd(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            bannerReloadKey,
+                        )
+                    }
+                }
             }
 
             if (paused && state.board.size > 0) {
@@ -346,9 +399,22 @@ fun GameScreen(
                     outcome = state.progress.outcome ?: GameOutcome.SOLVED,
                     timerSeconds = state.progress.timerSeconds,
                     mistakes = state.progress.mistakes,
-                    maxMistakes = state.config.maxMistakes,
+                    maxMistakes = state.livesTotal,
                     hintsUsed = state.progress.hintsUsed,
-                    maxHints = state.config.maxHints,
+                    maxHints = state.hintsTotal,
+                    // 仅 FAILED 且奖励未用尽时展示“看广告 +N 命”。
+                    watchAdLabel = if (
+                        state.progress.outcome == GameOutcome.FAILED &&
+                        state.lifeRewardAvailable && onLifeAd != null
+                    ) {
+                        stringResource(
+                            R.string.reward_watch_ad_life,
+                            state.config.rewards.extraLife.amount,
+                        )
+                    } else {
+                        null
+                    },
+                    onWatchAd = onLifeAd,
                     onRetrySamePuzzle = { dispatch(GameEvent.RetrySamePuzzle) },
                     onNewGame = { dispatch(GameEvent.Restart) },
                     onExit = onExit,

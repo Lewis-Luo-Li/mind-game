@@ -31,6 +31,11 @@
     <string name="tool_solve">Solve</string>
     <string name="hint_filled">Hint: placed %1$d</string>
 
+    <!-- ===== 激励广告奖励 ===== -->
+    <string name="reward_watch_ad_life">Watch ad · +%1$d life</string>
+    <string name="reward_ad_unavailable">Ad isn\'t ready yet — try again in a moment.</string>
+    <string name="cd_hint_reward_ad">Watch an ad to earn %1$d more hint(s)</string>
+
     <!-- ===== 暂停 / 完成浮层 ===== -->
     <string name="pause_title">Paused</string>
     <string name="finish_victory">🎉 Solved!</string>

@@ -17,12 +17,13 @@ sealed interface GameEffect {
     /** 请求显示一段轻量提示（Snackbar / Toast）。 */
     data class ShowMessage(val message: String) : GameEffect
 
-    /** 谜题成功完成（调用方据此播放动画 / 弹窗 / 进入结算）。 */
-    data object PuzzleCompleted : GameEffect
+    /** 谜题成功完成。[gameInstance] 记录结束时的局实例——消费侧有延迟，期间
+     *  玩家可能已重开新局，必须携带发出时的 ID 而不能现场读 state。 */
+    data class PuzzleCompleted(val gameInstance: Int) : GameEffect
 
     /** 误触错误达上限而失败结束。 */
-    data object GameOver : GameEffect
+    data class GameOver(val gameInstance: Int) : GameEffect
 
     /** The solution was revealed instead of solving the puzzle. */
-    data object SolutionRevealed : GameEffect
+    data class SolutionRevealed(val gameInstance: Int) : GameEffect
 }

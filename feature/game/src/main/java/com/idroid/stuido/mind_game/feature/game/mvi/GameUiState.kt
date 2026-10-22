@@ -2,6 +2,8 @@ package com.idroid.stuido.mind_game.feature.game.mvi
 
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
+import com.idroid.stuido.mind_game.core.logic.config.RewardRule
+import com.idroid.stuido.mind_game.core.logic.config.RewardsSection
 import com.idroid.stuido.mind_game.feature.game.GameMode
 import com.idroid.stuido.mind_game.feature.game.GameOutcome
 import com.idroid.stuido.mind_game.feature.game.GameStatus
@@ -33,9 +35,25 @@ data class GameUiState(
     val progress: GameProgress = GameProgress(),
     val history: List<GameSnapshot> = emptyList(),
 ) {
-    val hintsLeft: Int get() = (config.maxHints - progress.hintsUsed).coerceAtLeast(0)
-    val livesLeft: Int get() = (config.maxMistakes - progress.mistakes).coerceAtLeast(0)
+    /** 提示/命数总额 = 开局配置 + 本局已通过激励广告获得的奖励。 */
+    val hintsTotal: Int get() = config.maxHints + progress.bonusHints
+    val livesTotal: Int get() = config.maxMistakes + progress.bonusLives
+
+    val hintsLeft: Int get() = (hintsTotal - progress.hintsUsed).coerceAtLeast(0)
+    val livesLeft: Int get() = (livesTotal - progress.mistakes).coerceAtLeast(0)
     val canUndo: Boolean get() = history.isNotEmpty()
+
+    /** 提示奖励广告是否仍可领取（rewards.extra_hint 的开关/次数上限/每日限制）。 */
+    val hintRewardAvailable: Boolean
+        get() = rewardAvailable(config.rewards.extraHint, progress.hintRewardsUsed)
+
+    /** 命数奖励广告是否仍可领取（rewards.extra_life 的开关/次数上限/每日限制）。 */
+    val lifeRewardAvailable: Boolean
+        get() = rewardAvailable(config.rewards.extraLife, progress.lifeRewardsUsed)
+
+    private fun rewardAvailable(rule: RewardRule, used: Int): Boolean =
+        rule.enabled && used < rule.maxPerGame &&
+            (rule.allowInDaily || config.mode != GameMode.DAILY)
 }
 
 /**
@@ -57,6 +75,7 @@ data class GameConfig(
     val seed: Long? = null,
     val maxMistakes: Int = 3,
     val maxHints: Int = 3,
+    val rewards: RewardsSection = RewardsSection(),
 ) {
     val size: Int get() = spec.size
 }
@@ -127,6 +146,16 @@ data class GameProgress(
     val isBusy: Boolean = false,
     val hintsUsed: Int = 0,
     val outcome: GameOutcome? = null,
+    /** 激励广告已补充的提示数（进入 hintsTotal）。 */
+    val bonusHints: Int = 0,
+    /** 激励广告已补充的命数（进入 livesTotal，复活路径）。 */
+    val bonusLives: Int = 0,
+    /** 本局已领取的提示奖励次数（对 max_per_game 计数）。 */
+    val hintRewardsUsed: Int = 0,
+    /** 本局已领取的命数奖励次数（对 max_per_game 计数）。 */
+    val lifeRewardsUsed: Int = 0,
+    /** 本 ViewModel 内第几局（新开/重开 +1），横幅广告按它触发重载。 */
+    val gameInstance: Int = 0,
 ) {
     val isRunning: Boolean get() = status == GameStatus.RUNNING
     val isFinished: Boolean get() = status == GameStatus.FINISHED

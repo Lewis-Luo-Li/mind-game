@@ -36,8 +36,39 @@ object GameReducer {
                 timerSeconds = 0,
                 hintsUsed = 0,
                 outcome = null,
+                // 局内奖励计数随新局清零；gameInstance 递增供横幅重载识别。
+                gameInstance = state.progress.gameInstance + 1,
             ),
             history = emptyList(),
+        )
+    }
+
+    /** 激励广告发放提示奖励：追加 bonusHints 并计一次领取；越限/禁用时不生效。 */
+    fun grantRewardedHints(state: GameUiState, amount: Int): GameUiState {
+        if (amount <= 0 || !state.hintRewardAvailable) return state
+        return state.copy(
+            progress = state.progress.copy(
+                bonusHints = state.progress.bonusHints + amount,
+                hintRewardsUsed = state.progress.hintRewardsUsed + 1,
+            ),
+        )
+    }
+
+    /**
+     * 激励广告发放命数奖励：追加 bonusLives 并计一次领取。
+     * 若当前处于 FAILED 终态则复活回 RUNNING（命数总额抬高后 livesLeft 恢复 >0）。
+     */
+    fun grantRewardedLives(state: GameUiState, amount: Int): GameUiState {
+        if (amount <= 0 || !state.lifeRewardAvailable) return state
+        val revive = state.progress.status == GameStatus.FINISHED &&
+            state.progress.outcome == GameOutcome.FAILED
+        return state.copy(
+            progress = state.progress.copy(
+                bonusLives = state.progress.bonusLives + amount,
+                lifeRewardsUsed = state.progress.lifeRewardsUsed + 1,
+                status = if (revive) GameStatus.RUNNING else state.progress.status,
+                outcome = if (revive) null else state.progress.outcome,
+            ),
         )
     }
 

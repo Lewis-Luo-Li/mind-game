@@ -18,12 +18,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.idroid.stuido.mind_game.BuildConfig
+import com.idroid.stuido.mind_game.ads.AdMobInterstitialController
+import com.idroid.stuido.mind_game.ads.AdMobRewardedAdController
+import com.idroid.stuido.mind_game.ads.adMobBannerSlot
 import com.idroid.stuido.mind_game.config.GameConfigRepository
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
 import com.idroid.stuido.mind_game.core.logic.config.DifficultyConfig
 import com.idroid.stuido.mind_game.core.logic.config.GameRemoteConfig
 import com.idroid.stuido.mind_game.feature.game.GameMode
+import com.idroid.stuido.mind_game.feature.game.GameOutcome
+import com.idroid.stuido.mind_game.feature.game.ads.FakeRewardedAdController
+import com.idroid.stuido.mind_game.feature.game.ads.InterstitialController
+import com.idroid.stuido.mind_game.feature.game.ads.InterstitialFrequencyGate
 import com.idroid.stuido.mind_game.feature.game.ui.GameScreenRoute
 import com.idroid.stuido.mind_game.main.model.GameId
 import com.idroid.stuido.mind_game.main.model.gameCatalog
@@ -72,6 +79,22 @@ fun MindGameApp(themePrefs: ThemePrefs) {
     val gameConfig = remember { GameConfigRepository.fromAssets(context).config }
     val difficultyConfig = remember(gameConfig) { gameConfig.toDifficultyConfig() }
 
+    // 广告装配：ads.enabled 总开关由 bundled config 驱动。
+    // 关闭时横幅不渲染、插页走 NOOP，但激励入口仍在（Fake 直接发奖——设计约定
+    // “rewards on + ads off”时奖励按钮可用，作为广告接入前的占位路径）。
+    val adsEnabled = gameConfig.ads.enabled
+    val bannerAd = remember(adsEnabled) { if (adsEnabled) adMobBannerSlot() else null }
+    val rewardedAds = remember(adsEnabled) {
+        if (adsEnabled) AdMobRewardedAdController(context.applicationContext)
+        else FakeRewardedAdController()
+    }
+    val interstitialAds = remember(adsEnabled) {
+        if (adsEnabled) AdMobInterstitialController(context.applicationContext)
+        else InterstitialController.NOOP
+    }
+    // 插页频控：进程内内存态（不持久化），跨对局累计完成的局数。
+    val interstitialGate = remember { InterstitialFrequencyGate() }
+
     var playRequest by remember { mutableStateOf<PlayRequest?>(null) }
     var backStack by rememberSaveable(
         stateSaver = listSaver(
@@ -97,6 +120,20 @@ fun MindGameApp(themePrefs: ThemePrefs) {
             difficultyConfig = difficultyConfig,
             maxMistakes = req.rules.lives,
             maxHints = req.rules.hints,
+            rewards = gameConfig.rewards,
+            rewardedAds = rewardedAds,
+            bannerAd = bannerAd,
+            onGameFinished = { outcome, firstFinish ->
+                // 一局只计一次（复活后的二次终局不再计入局数）。
+                if (firstFinish) interstitialGate.recordGameFinished()
+                // FAILED 由激励广告复活承接，不播插页；SOLVED/REVEALED 满足
+                // ads.interstitial 的局数/秒数下限才播，SDK 确认弹出后才 recordShown。
+                if (outcome != GameOutcome.FAILED &&
+                    interstitialGate.shouldShow(gameConfig.ads.interstitial, adsEnabled)
+                ) {
+                    interstitialAds.maybeShow(context) { interstitialGate.recordShown() }
+                }
+            },
             showDebugSolve = BuildConfig.DEBUG,
             sessionKey = "sudoku-game-${req.id}",
         )

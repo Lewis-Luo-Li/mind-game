@@ -20,6 +20,6 @@
     "extra_life": { "enabled": true, "amount": 1, "max_per_game": 2, "allow_in_daily": true },
     "extra_hint": { "enabled": true, "amount": 1, "max_per_game": 3, "allow_in_daily": true }
   },
-  "ads": { "enabled": false, "interstitial": { "enabled": false, "min_games_between": 3, "min_seconds_between": 180 } },
+  "ads": { "enabled": true, "interstitial": { "enabled": true, "min_games_between": 3, "min_seconds_between": 180 } },
   "features": { "onboarding_tour": true, "notes_auto_fill": false, "crossword": false, "zooduku": false }
 }

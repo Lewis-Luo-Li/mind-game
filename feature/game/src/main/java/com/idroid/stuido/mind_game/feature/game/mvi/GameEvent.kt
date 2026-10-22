@@ -2,6 +2,7 @@ package com.idroid.stuido.mind_game.feature.game.mvi
 
 import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
+import com.idroid.stuido.mind_game.core.logic.config.RewardsSection
 import com.idroid.stuido.mind_game.feature.game.GameMode
 
 /**
@@ -24,6 +25,7 @@ sealed interface GameEvent {
         val seed: Long? = null,
         val maxMistakes: Int = 3,
         val maxHints: Int = 3,
+        val rewards: RewardsSection = RewardsSection(),
     ) : GameEvent
 
     /** 重新开始当前对局（同参数再开一局）。 */
@@ -61,6 +63,14 @@ sealed interface GameEvent {
 
     /** 使用一次提示：填入正确值到当前格，不增加错误。 */
     data object RequestHint : GameEvent
+
+    // ---------- 激励广告奖励 ----------
+
+    /** 激励广告发奖成功：向本局追加 [amount] 次提示（受 rewards.extra_hint 约束）。 */
+    data class GrantRewardedHints(val amount: Int) : GameEvent
+
+    /** 激励广告发奖成功：向本局追加 [amount] 条命（受 rewards.extra_life 约束；复活）。 */
+    data class GrantRewardedLives(val amount: Int) : GameEvent
 
     /** 请求核对当前已填数值是否与终盘一致（同步提示冲突）。 */
     data object RequestCheck : GameEvent
