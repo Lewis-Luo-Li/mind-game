@@ -368,8 +368,9 @@ fun GameScreen(
                 }
 
                 // 横幅固定槽：常驻 50dp + 系统导航栏避让。广告加载失败也只留白，
-                // 不回收高度，避免棋盘/键盘位移误触。
+                // 不回收高度，避免棋盘/键盘位移误触。与键盘之间保留间距分隔。
                 if (bannerAd != null) {
+                    Spacer(Modifier.height(12.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
