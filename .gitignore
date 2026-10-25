@@ -11,3 +11,4 @@ local.properties
 .artifacts
 .proxyai
 bin/
+secrets.properties
