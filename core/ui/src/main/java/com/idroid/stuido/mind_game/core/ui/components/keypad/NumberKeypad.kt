@@ -1,5 +1,6 @@
 package com.idroid.stuido.mind_game.core.ui.components.keypad
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -13,6 +14,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -98,7 +100,14 @@ private fun KeyButton(
     keySize: Dp,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+    // 整格可点（而非仅 keySize 内）：pointerInput 直接吃触控，不产生额外语义节点
+    // （否则每个数字在读屏里会被报成两个按钮），命中格内键与徽标外的任何位置都算。
+    Box(
+        modifier = modifier.pointerInput(enabled) {
+            if (enabled) detectTapGestures { onClick() }
+        },
+        contentAlignment = Alignment.Center,
+    ) {
         Box {
             Surface(
                 modifier = Modifier.size(keySize),
