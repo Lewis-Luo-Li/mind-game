@@ -1,0 +1,44 @@
+name: Release build
+
+on:
+  push:
+    branches: ['release/*']
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  release-build:
+    name: Release build (real ad IDs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Decrypt AdMob secret.properties
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        # 不要回显密码或文件内容，仅校验文件已生成。
+        run: |
+          bash script/decrypt_secret.sh
+          test -s secret.properties
+          chmod 600 secret.properties
+      - name: Assemble release APK
+        # -PrequireAdMobSecrets 让 Gradle 在缺任一 ADMOB_* 键时构建失败，
+        # 与 app/build.gradle.kts 用的是同一个 Properties 解析，绝不打印值。
+        run: ./gradlew assembleRelease --stacktrace -PrequireAdMobSecrets=true
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
