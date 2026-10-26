@@ -48,6 +48,13 @@ sealed interface GameEvent {
     /** 在当前选中格切换/添加/移除一个**笔记**候选 [value]。 */
     data class ToggleNote(val index: Int, val value: Int) : GameEvent
 
+    /**
+     * 数字キー押下：選択中セルへの入力。index/入力モード/given 判定はイベントに持たず、
+     * ViewModel が dispatch 時点の最新 state から解決する（UI 側の state スナップショット
+     * をコールバックに閉じ込めると、遅延実行時に古い選択へ書き込む stale capture になる）。
+     */
+    data class KeypadDigit(val digit: Int) : GameEvent
+
     /** 清除当前选中格（仅限允许改动的非给定格）的内容与笔记。 */
     data object Erase : GameEvent
 

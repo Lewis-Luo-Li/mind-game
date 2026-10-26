@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -114,16 +115,6 @@ fun GameScreen(
     val paused = status == GameStatus.PAUSED
     var showSolveDialog by remember { mutableStateOf(false) }
 
-    fun pressDigit(digit: Int) {
-        val idx = state.selection.index ?: return
-        if (idx in state.board.givens) return
-        val event = if (state.selection.inputMode == InputMode.NOTE) {
-            GameEvent.ToggleNote(idx, digit)
-        } else {
-            GameEvent.InputNumber(idx, digit)
-        }
-        dispatch(event)
-    }
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { inner ->
         Box(
@@ -356,7 +347,8 @@ fun GameScreen(
                                 digits = state.board.size,
                                 remaining = state.board.remainingCounts(),
                                 zeroCountEnabled = noteDigitsAtSelection,
-                                onDigit = ::pressDigit,
+                                // 選択解決はViewModel側（KeypadDigit）が最新stateで行う
+                                onDigit = { dispatch(GameEvent.KeypadDigit(it)) },
                             ),
                             uiConfig = NumberKeypadConfig(
                                 enabled = state.selection.index?.let { it !in state.board.givens } ?: false,
@@ -372,10 +364,13 @@ fun GameScreen(
                 if (bannerAd != null) {
                     Spacer(Modifier.height(12.dp))
                     Box(
+                        // clipToBounds: AdView は広告内容に合わせて50dpを超えてmeasureされる
+                        // ことがあり、そのままだとキーパッド側にまでタッチ領域が食い込む。
                         modifier = Modifier
                             .fillMaxWidth()
                             .navigationBarsPadding()
                             .height(50.dp)
+                            .clipToBounds()
                             .background(colorScheme.secondaryContainer),
                     ) {
                         bannerAd(
