@@ -109,7 +109,7 @@ class GameViewModelTest {
         val first = board.values.indices.first { it !in board.givens }
         val second = board.values.indices.filter { it !in board.givens }[1]
 
-        // 未選択では何もしない（UI 側の state スナップショットに依存しない）
+        // 未选中时不做任何事（不依赖 UI 侧的 state 快照）
         vm.dispatch(GameEvent.KeypadDigit(1))
         assertEquals(0, vm.uiState.value.board.values[first])
 
@@ -118,7 +118,7 @@ class GameViewModelTest {
         val digit = board.solution[second]
         vm.dispatch(GameEvent.KeypadDigit(digit))
 
-        // 現在選択中の second へ書き込まれる（最初に選んだ first ではない）
+        // 写入的是当前选中的 second（而不是最初选中的 first）
         assertEquals(digit, vm.uiState.value.board.values[second])
         assertEquals(0, vm.uiState.value.board.values[first])
     }

@@ -347,7 +347,7 @@ fun GameScreen(
                                 digits = state.board.size,
                                 remaining = state.board.remainingCounts(),
                                 zeroCountEnabled = noteDigitsAtSelection,
-                                // 選択解決はViewModel側（KeypadDigit）が最新stateで行う
+                                // 选中解析由 ViewModel（KeypadDigit）按最新 state 完成
                                 onDigit = { dispatch(GameEvent.KeypadDigit(it)) },
                             ),
                             uiConfig = NumberKeypadConfig(
@@ -364,8 +364,8 @@ fun GameScreen(
                 if (bannerAd != null) {
                     Spacer(Modifier.height(12.dp))
                     Box(
-                        // clipToBounds: AdView は広告内容に合わせて50dpを超えてmeasureされる
-                        // ことがあり、そのままだとキーパッド側にまでタッチ領域が食い込む。
+                        // clipToBounds: AdView 会按广告内容 measure 出超过 50dp 的高度，
+                        // 不裁剪时其触摸区域会侵入数字键盘一侧。
                         modifier = Modifier
                             .fillMaxWidth()
                             .navigationBarsPadding()

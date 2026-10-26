@@ -49,9 +49,9 @@ sealed interface GameEvent {
     data class ToggleNote(val index: Int, val value: Int) : GameEvent
 
     /**
-     * 数字キー押下：選択中セルへの入力。index/入力モード/given 判定はイベントに持たず、
-     * ViewModel が dispatch 時点の最新 state から解決する（UI 側の state スナップショット
-     * をコールバックに閉じ込めると、遅延実行時に古い選択へ書き込む stale capture になる）。
+     * 数字键按下：输入到当前选中格。index/输入模式/given 判定不随事件携带，
+     * 由 ViewModel 在 dispatch 时依据最新 state 解析（UI 侧回调若携带 state 快照，
+     * 延迟执行时会写入旧选中格 —— 即 stale capture 问题）。
      */
     data class KeypadDigit(val digit: Int) : GameEvent
 

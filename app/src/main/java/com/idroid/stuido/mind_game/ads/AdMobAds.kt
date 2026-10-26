@@ -52,9 +52,9 @@ fun AdMobBanner(modifier: Modifier, reloadKey: Any?) {
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
-            // AdView は中身の WebView が広告コンテンツに合わせて高さを拡張し、
-            // Compose 側の 50dp 制約を超えてタッチ領域が上のキーパッドまで食い込む
-            // ことがある。clipChildren な FrameLayout に収めてスロット内に留める。
+            // AdView 内部的 WebView 会按广告内容撑高自身，可能超过 Compose 的 50dp
+            // 约束，使其触摸区域侵入上方的数字键盘。装入 clipChildren 的 FrameLayout
+            // 以把触摸限制在槽位内。
             android.widget.FrameLayout(ctx).apply {
                 clipChildren = true
                 clipToPadding = true

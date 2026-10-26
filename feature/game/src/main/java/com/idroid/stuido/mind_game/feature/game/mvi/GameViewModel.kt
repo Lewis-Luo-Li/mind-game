@@ -198,7 +198,7 @@ class GameViewModel(
         }
     }
 
-    /** 数字キー押下を dispatch 時点の最新 state で解決する（選択・given・入力モードはここで見る）。 */
+    /** 数字键按下：按 dispatch 时点的最新 state 解析（选中格/given/输入模式都在此处读取）。 */
     private fun keypadDigit(digit: Int) {
         val s = _uiState.value
         val idx = s.selection.index ?: return
