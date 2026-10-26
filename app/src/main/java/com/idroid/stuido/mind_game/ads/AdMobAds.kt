@@ -52,19 +52,28 @@ fun AdMobBanner(modifier: Modifier, reloadKey: Any?) {
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
-            AdView(ctx).apply {
-                setAdSize(AdSize.BANNER)
-                adUnitId = BuildConfig.ADMOB_BANNER_UNIT_ID
-                adListener = object : AdListener() {
-                    override fun onAdFailedToLoad(error: LoadAdError) {
-                        Log.w(TAG, "Banner failed to load: ${error.message}")
-                    }
-                }
-            }.also { adView = it }
+            // AdView 内部的 WebView 会按广告内容撑高自身，可能超过 Compose 的 50dp
+            // 约束，使其触摸区域侵入上方的数字键盘。装入 clipChildren 的 FrameLayout
+            // 以把触摸限制在槽位内。
+            android.widget.FrameLayout(ctx).apply {
+                clipChildren = true
+                clipToPadding = true
+                addView(
+                    AdView(ctx).apply {
+                        setAdSize(AdSize.BANNER)
+                        adUnitId = BuildConfig.ADMOB_BANNER_UNIT_ID
+                        adListener = object : AdListener() {
+                            override fun onAdFailedToLoad(error: LoadAdError) {
+                                Log.w(TAG, "Banner failed to load: ${error.message}")
+                            }
+                        }
+                    }.also { adView = it },
+                )
+            }
         },
         // 销毁交给 AndroidView 生命周期：离开组合时统一 onRelease，
         // 不在 DisposableEffect 的 onDispose 里读共享 adView 状态。
-        onRelease = { it.destroy() },
+        onRelease = { container -> (container.getChildAt(0) as? AdView)?.destroy() },
     )
     LaunchedEffect(adView, reloadKey) {
         adView?.loadAd(AdRequest.Builder().build())

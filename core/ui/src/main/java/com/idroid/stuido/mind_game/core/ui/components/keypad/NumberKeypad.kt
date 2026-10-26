@@ -1,5 +1,6 @@
 package com.idroid.stuido.mind_game.core.ui.components.keypad
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -11,8 +12,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -98,7 +102,18 @@ private fun KeyButton(
     keySize: Dp,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+    // 整格可点（而非仅 keySize 内）：pointerInput 直接吃触控，不产生额外语义节点
+    // （否则每个数字在读屏里会被报成两个按钮），命中格内键与徽标外的任何位置都算。
+    // onClick 必须经 rememberUpdatedState 转手：pointerInput 只在 enabled 变化时重启，
+    // 直接捕获会把回调（及其捕获的 state 快照）冻结在协程启动那次重组，旧选择/Givens
+    // 会让 keypressDigit 的守卫静默 early-return —— 表现为“点了没反应”。
+    val currentOnClick by rememberUpdatedState(onClick)
+    Box(
+        modifier = modifier.pointerInput(enabled) {
+            if (enabled) detectTapGestures { currentOnClick() }
+        },
+        contentAlignment = Alignment.Center,
+    ) {
         Box {
             Surface(
                 modifier = Modifier.size(keySize),

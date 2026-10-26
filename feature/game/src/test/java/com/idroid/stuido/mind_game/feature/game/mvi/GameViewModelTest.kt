@@ -102,6 +102,56 @@ class GameViewModelTest {
     }
 
     @Test
+    fun `keypad digit resolves selection from the latest state at dispatch time`() = runGameTest {
+        val vm = newViewModel()
+        startGame(vm)
+        val board = vm.uiState.value.board
+        val first = board.values.indices.first { it !in board.givens }
+        val second = board.values.indices.filter { it !in board.givens }[1]
+
+        // 未选中时不做任何事（不依赖 UI 侧的 state 快照）
+        vm.dispatch(GameEvent.KeypadDigit(1))
+        assertEquals(0, vm.uiState.value.board.values[first])
+
+        vm.dispatch(GameEvent.SelectCell(first))
+        vm.dispatch(GameEvent.SelectCell(second))
+        val digit = board.solution[second]
+        vm.dispatch(GameEvent.KeypadDigit(digit))
+
+        // 写入的是当前选中的 second（而不是最初选中的 first）
+        assertEquals(digit, vm.uiState.value.board.values[second])
+        assertEquals(0, vm.uiState.value.board.values[first])
+    }
+
+    @Test
+    fun `keypad digit on a given cell is ignored`() = runGameTest {
+        val vm = newViewModel()
+        startGame(vm)
+        val board = vm.uiState.value.board
+        val given = board.givens.first()
+
+        vm.dispatch(GameEvent.SelectCell(given))
+        vm.dispatch(GameEvent.KeypadDigit(1))
+
+        assertEquals(board.values[given], vm.uiState.value.board.values[given])
+    }
+
+    @Test
+    fun `keypad digit in note mode toggles a pencil mark`() = runGameTest {
+        val vm = newViewModel()
+        startGame(vm)
+        val board = vm.uiState.value.board
+        val cell = board.values.indices.first { it !in board.givens }
+
+        vm.dispatch(GameEvent.SelectCell(cell))
+        vm.dispatch(GameEvent.ToggleNoteMode)
+        vm.dispatch(GameEvent.KeypadDigit(3))
+
+        assertEquals(0, vm.uiState.value.board.values[cell])
+        assertTrue(3 in vm.uiState.value.board.notes[cell].orEmpty())
+    }
+
+    @Test
     fun `three wrong inputs fail the game and later input is ignored`() = runGameTest {
         val vm = newViewModel()
         val effects = mutableListOf<GameEffect>()
