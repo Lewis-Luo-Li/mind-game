@@ -1,7 +1,7 @@
 # Daily dashboard + top-3 hint rewards: product roadmap
 
 Status: **proposal, needs decisions** (see [§8](#8-open-decisions)). Docs only, nothing here is implemented.
-Related: `docs/game_config_json.md` (`rewards` section), the 5 pm Sydney daily reset + Level/ladder redesign (planned separately).
+Related: `docs/game_config_json.md` (`rewards` section) and `docs/game_mode_selection_plan.md` (the Daily Challenge + Level ladder redesign; see [§0.1](#01-combined-with-the-game-mode-redesign)).
 
 **TL;DR**
 - A **Daily Dashboard** ranks everyone who solved today's Daily Challenge. The day runs from 5 pm to 5 pm Sydney time.
@@ -23,13 +23,27 @@ Related: `docs/game_config_json.md` (`rewards` section), the 5 pm Sydney daily r
 | Hints/lives | Config budget (3/3) + rewarded ads (`extra_hint.max_per_game: 3`, `extra_life.max_per_game: 2`, `allow_in_daily: true`) | Ad bonuses are an advantage on a ranked board and have to be scored or excluded |
 | Backend | None. Fully offline | Needs identity, storage, server validation, scheduled close |
 
+### 0.1 Combined with the game-mode redesign
+The game-mode plan (`docs/game_mode_selection_plan.md`) replaces the home screen with two modes: **Daily Challenge** (resets 17:00 Sydney) and a **Level N ladder** (Easy → Medium → Hard → Expert, repeating). This is how the two plans fit together:
+
+| Topic | Game-mode plan | Effect on this roadmap |
+|---|---|---|
+| Daily window | `DailySchedule` in `:core:logic`; `puzzleDay` = the Sydney date the window **opens** | This doc uses the same key (§1.1). Its mode-plan PRs 1–2 **are** most of Phase 0 here |
+| DST correctness | Defined as `(now in Sydney − 17h).toLocalDate()` | **Bug to avoid:** `ZonedDateTime.minusHours` works on the instant timeline, so on DST days the rollover lands at **18:00** (first Sun of Oct) and **16:00** (first Sun of Apr). Compare local time instead: `if (localTime < 17:00) date − 1 else date`. Verified with java.time |
+| Daily board | Config `daily.spec` = classic 9×9; difficulty fixed or rotating (mode-plan decision 2) | Answers D1: one ranked board per day. With a rotating difficulty, times are comparable within a day but not across days (this matters only for weekly boards in Phase 4) |
+| Seed | `puzzleDay.toEpochDay() + daily.seed_salt` (public, computed on the client) | Fine for Phase 0. Phase 1 switches ranked play to the server-published puzzle with a secret salt (§2.3 V3); local generation stays as the offline, unranked fallback |
+| Results | `PlayerProgressRepository` (SharedPreferences): `ladderLevel`, `dailyResult(puzzleDay)` | Becomes the local cache for Phases 0–2. Streaks come from `dailyResult`. The move log still needs adding |
+| Replay | Replays must not count (mode-plan decision 6) | Matches the first-attempt rule (§1.4) |
+| Free mode | May be dropped or kept as "Practice" (mode-plan decision 1) | Prize hints are spent in **Ladder** (+ Practice if kept), not Daily |
+| Ladder | Same puzzle per level for everyone, progress stored locally | New option: show the player's **ladder level** on the dashboard (D13). Not recommended for prizes: it is a lifetime race and progress is local (easy to edit) until it is server-validated |
+
 ---
 
 ## 1. Product definition
 
 ### 1.1 Daily window (aligned to the 5 pm Sydney reset)
-- **dayKey** = the Sydney calendar date on which the window *closes* (e.g. `2026-10-26` = Oct 25 17:00 → Oct 26 16:59:59 `Australia/Sydney`).
-- The client and server compute it the same way with `ZoneId.of("Australia/Sydney")`, so DST is handled. Days are 23 h / 25 h on transition days, which is fine.
+- **dayKey** = `puzzleDay` from the game-mode plan: the Sydney calendar date on which the window *opens* (e.g. `2026-10-25` = Oct 25 17:00 → Oct 26 16:59:59 `Australia/Sydney`).
+- The client and server compute it the same way: take the local time in `ZoneId.of("Australia/Sydney")`, then `if (time < 17:00) date − 1 else date`. Don't use `minusHours(17)`, which is off by an hour on DST days (§0.1). Days are 23 h / 25 h on transition days, which is fine.
 - The seed is derived from `dayKey` (plus the salt), never from device-local midnight.
 - The UI always shows the reset in **local time**, e.g. "Resets in 3h 12m (5:00 pm Sydney · 7:00 am London)".
 
@@ -79,7 +93,7 @@ Global first. Friends needs a social graph, so it waits until Phase 4.
 
 | Option | 1st / 2nd / 3rd | Expiry | Notes |
 |---|---|---|---|
-| **A. Banked hints** *(recommended)* | 5 / 3 / 2 hints | 14 days after claim | Goes into a server wallet, spendable in Free/Level modes |
+| **A. Banked hints** *(recommended)* | 5 / 3 / 2 hints | 14 days after claim | Goes into a server wallet, spendable in Ladder (and Practice, if kept) |
 | B. Next-daily bonus | +2 / +1 / +1 hints on the next Daily only | Next dayKey | No wallet needed, but it hands the leaders an advantage on the next board |
 | C. Cosmetic + small hints | Badge/crown on name for 24 h + A | — | Bragging rights work for retention without devaluing rewarded ads |
 
@@ -195,7 +209,7 @@ How the hint sources stack in one game:
 |---|---|---|---|
 | Base hints | `sudoku.rules` (3) | per game | Yes (penalised in score) |
 | Rewarded-ad hint | `rewards.extra_hint` (+1, `max_per_game: 3`) | per game | Yes, penalised (or no, see D5) |
-| **Banked prize hints** | `wallets/{uid}` | New `rewards.banked_hint.max_per_game` (e.g. 3) | No *(recommended)*: Free/Level only |
+| **Banked prize hints** | `wallets/{uid}` | New `rewards.banked_hint.max_per_game` (e.g. 3) | No *(recommended)*: Ladder/Practice only |
 
 - Order of use: base → banked → rewarded ad. The ad button appears only when base and banked are both exhausted, so ads still matter.
 - Config additions (bundled `game_config.json`): `leaderboard { enabled, prize_hints: [5,3,2], prize_expiry_days, min_participants, penalties { mistake_s, hint_s, revive_s } }`. The server keeps its own copy and its copy wins.
@@ -209,10 +223,10 @@ Effort is for one Android/Kotlin engineer, as a rough estimate.
 
 | Phase | Scope | Effort | Depends on | Success metrics | Risks |
 |---|---|---|---|---|---|
-| **0. Foundations (offline)** | Sydney 5 pm `dayKey` in `:core:logic` (shared by client and server job); one canonical daily board (D1); persistent local **game history + stats + streaks** (Room or DataStore); first-attempt flag; record move log in `GameProgress`; local "Stats" screen | 1–1.5 wk | Daily-redesign session | Daily D1 retention, % players with ≥ 3-day streak, daily participation rate | DST edge cases (unit tests on transition dates); migration of existing daily seed |
+| **0. Foundations (offline)** | **Mostly delivered by game-mode plan PRs 1–2**: `DailySchedule`/`puzzleDay` in `:core:logic` (shared by the client and the server job), a single 9×9 daily board, `PlayerProgressRepository`. Extra work for the leaderboard: persistent local **game history + stats + streaks** (Room or DataStore); first-attempt flag; record move log in `GameProgress`; local "Stats" screen | +0.5–1 wk on top of the game-mode plan | Game-mode plan PRs 1–2 | Daily D1 retention, % players with ≥ 3-day streak, daily participation rate | DST edge cases (unit tests on transition dates); migration of existing daily seed |
 | **1. Accounts + score submission** | Firebase projects (dev/prod), Anonymous Auth + Link Google, App Check/Play Integrity, V3 puzzle publisher job, `startDaily`/`submitDaily` with validation, privacy policy + Data safety + in-app/web deletion, UMP consent | 2–3 wk | Phase 0, D2–D4, D9 | ≥ 95% submissions validate; < 1% false rejections; p95 submit latency < 1 s | Play Integrity quota/setup; Families/age decision blocks launch |
 | **2. Dashboard UI** | Dashboard screen (Today / Yesterday tabs), my card + rank/percentile, top 50, countdown in local time, display-name editor + report, opt-in visibility | 1.5–2 wk | Phase 1 | % daily solvers who open the board; D7 retention lift vs Phase 0 baseline | Empty board at low player counts (show percentile + "be first"); moderation load |
-| **3. Top-3 rewards** | `closeDaily` scheduler 17:15 Sydney, results doc, wallet + ledger + expiry, Claim card, FCM winner push, prize eligibility rules, manual-review hold, banked hints in Free/Level | 1.5–2 wk | Phase 2 + ~2 weeks of real submission data to tune penalties/thresholds | Daily participation lift; rewarded-ad views/user **not** dropping; flagged-winner rate < 5% | Cheaters taking prizes; hint economy cannibalising ads |
+| **3. Top-3 rewards** | `closeDaily` scheduler 17:15 Sydney, results doc, wallet + ledger + expiry, Claim card, FCM winner push, prize eligibility rules, manual-review hold, banked hints in Ladder/Practice | 1.5–2 wk | Phase 2 + ~2 weeks of real submission data to tune penalties/thresholds | Daily participation lift; rewarded-ad views/user **not** dropping; flagged-winner rate < 5% | Cheaters taking prizes; hint economy cannibalising ads |
 | **4. Social + seasonal** | Friends (invite code or PGS Friends), friends tab, streak shown on board + streak rewards, weekly/seasonal boards, leagues (groups of ~30 by skill, Duolingo-style) so non-experts can place, optional PGS mirror + achievements | 3–4 wk (incremental) | Phase 3 | Invites/user, D30 retention, % players who ever placed top 3 in a league | Scope creep; more moderation/privacy surface |
 
 Total to "top-3 rewards live": **~6–8 engineer-weeks**. Phase 0 can ship on its own.
@@ -231,15 +245,17 @@ Total to "top-3 rewards live": **~6–8 engineer-weeks**. Phase 0 can ship on it
 
 | # | Decision | Options | Recommendation |
 |---|---|---|---|
-| D1 | Which board is ranked daily? | (a) one classic 9×9 board/day (difficulty from the ladder cycle), (b) one board per size, each with its own leaderboard | (a), then add (b) later if needed |
+| D1 | Which board is ranked daily? | **Resolved by the game-mode plan**: one 9×9 daily board (difficulty = mode-plan decision 2) | — |
 | D2 | Scoring | A penalised time / B clean-only time / C points | A (`+30 s` mistake, `+60 s` hint, `+120 s` revive) |
 | D3 | Puzzle source | V1 TS port / V2 JVM function / V3 server-published | V3 |
 | D4 | Backend | PGS / Firebase / Supabase / custom | Firebase (+ optional PGS mirror later) |
 | D5 | Rewarded-ad hints/lives in Daily | allowed + penalised / disabled in Daily (`allow_in_daily: false`) | allowed + penalised |
 | D6 | Prize amount and expiry | 5/3/2 hints, 14 days / other | 5/3/2, 14 days, + 24 h crown |
-| D7 | Can prize hints be used in Daily? | yes / no | no |
+| D7 | Can prize hints be used in Daily? | yes / no (spend in Ladder/Practice only) | no |
 | D8 | Prize eligibility | anonymous OK / Google-linked required | Google-linked required |
 | D9 | Audience and region | 13+ vs includes kids; AU-first vs global | 13+; `australia-southeast1` if AU-first |
 | D10 | Leaderboard visibility default | opt-in / opt-out | opt-in |
 | D11 | Grace window and close time | 17:15 / 17:30 / none | 17:15 |
 | D12 | Friends graph (Phase 4) | invite codes / PGS Friends / contacts | invite codes (no contacts permission) |
+| D13 | Ladder on the dashboard? | (a) not shown, (b) show each player's level as profile info, (c) separate "highest level" board, (d) "levels cleared this week" board | (b) in Phase 2; (d) in Phase 4 once ladder results are server-validated. No prizes from the ladder |
+| D14 | Daily difficulty vs the leaderboard (with mode-plan decision 2) | fixed (e.g. Hard) / rotate by weekday | Fixed Hard is simplest for comparable times. A weekday rotation works for daily boards but complicates weekly ones |
