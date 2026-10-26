@@ -257,7 +257,7 @@ sdk.dir=/path/to/Android/Sdk
 ./gradlew installDebug           # install on a connected device/emulator
 ```
 
-**CI:** GitHub Actions runs on pull requests and pushes to `develop` and `main`. Its Unit tests job runs `./gradlew test`, the Debug build job runs `assembleDebug` and uploads the `app-debug-apk` artifact, and the Android instrumented tests job runs `connectedDebugAndroidTest` on an API 36 `google_apis` x86_64 emulator.
+**CI:** GitHub Actions runs on pull requests and pushes to `develop` and `main`. Its Unit tests job runs `./gradlew test`, the Debug build job runs `assembleDebug` and uploads the `app-debug-apk` artifact, and the Android instrumented tests job runs `connectedDebugAndroidTest` on an API 36 `google_apis` x86_64 emulator. The Release build job decrypts `secrets/secret.properties.gpg` with the `GPG_PASSPHRASE` repository secret, runs `assembleRelease` with the real AdMob IDs, and uploads the `app-release-apk` artifact (unsigned — release signing is a deferred TODO).
 
 Unit tests cover the solver, generator, validator, difficulty table and a puzzle reliability suite (`:core:logic`), and the reducer, UI state, board geometry, hint provider, input validator and game factory (`:feature:game`).
 
