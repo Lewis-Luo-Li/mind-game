@@ -27,11 +27,22 @@ jobs:
       - name: Decrypt AdMob secret.properties
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        # Never log the passphrase or file contents; just verify the file exists.
+        # 不要回显密码或文件内容，仅校验文件已生成。
         run: |
           bash script/decrypt_secret.sh
           test -s secret.properties
           chmod 600 secret.properties
+      - name: Verify all AdMob keys are present
+        # Gradle 对缺失的键会静默回退到 Google 测试广告 ID，
+        # 这里改为校验失败，防止 release APK 误带测试广告。
+        # 只检查键是否存在，绝不打印值。
+        run: |
+          for key in ADMOB_APP_ID ADMOB_BANNER_UNIT_ID ADMOB_INTERSTITIAL_UNIT_ID ADMOB_REWARDED_UNIT_ID; do
+            if ! grep -q "^${key}=." secret.properties; then
+              echo "::error::$key is missing or blank in secret.properties"
+              exit 1
+            fi
+          done
       - name: Assemble release APK
         run: ./gradlew assembleRelease --stacktrace
       - name: Upload release APK
