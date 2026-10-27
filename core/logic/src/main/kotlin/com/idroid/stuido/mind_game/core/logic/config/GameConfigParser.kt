@@ -95,31 +95,36 @@ internal fun parseResetTime(value: String): LocalTime? =
 
 internal fun parseZone(value: String): ZoneId? = runCatching { ZoneId.of(value) }.getOrNull()
 
-/** 规格/难度须在已校验的 holes 表中可用，否则整组回退默认；时区与换题时间各自回退。 */
+/**
+ * 规格/难度须在已校验的 holes 表中可用：依次尝试配置值、默认值、表中最大规格的最难档；
+ * 时区与换题时间各自回退。
+ */
 private fun DailySection.validated(
     default: DailySection,
     holes: Map<String, Map<String, Int>>,
 ): DailySection {
-    val available = holes[spec]?.containsKey(difficulty) == true
+    val (validSpec, validDifficulty) = listOf(spec to difficulty, default.spec to default.difficulty)
+        .firstOrNull { (s, d) -> holes[s]?.containsKey(d) == true }
+        ?: fallbackSpec(holes).let { s -> s to hardestDifficulty(holes.getValue(s)) }
     return copy(
         timezone = timezone.takeIf { parseZone(it) != null } ?: default.timezone,
         resetTime = resetTime.takeIf { parseResetTime(it) != null } ?: default.resetTime,
-        spec = if (available) spec else default.spec,
-        difficulty = if (available) difficulty else default.difficulty,
+        spec = validSpec,
+        difficulty = validDifficulty,
     )
 }
 
-/** 规格须在 holes 表中；cycle 只保留该规格可用的难度（去重保序），为空则回退默认。 */
+/** 规格须在 holes 表中（配置值 → 默认值 → 表中最大规格）；cycle 只保留该规格可用的难度（去重保序）。 */
 private fun LadderSection.validated(
     default: LadderSection,
     holes: Map<String, Map<String, Int>>,
 ): LadderSection {
-    val validSpec = spec.takeIf { holes.containsKey(it) } ?: default.spec
-    val specDifficulties = holes[validSpec].orEmpty().keys
+    val validSpec = listOf(spec, default.spec).firstOrNull { holes.containsKey(it) } ?: fallbackSpec(holes)
+    val specDifficulties = holes.getValue(validSpec).keys
     val validCycle = cycle.distinct()
         .filter { it.toDifficultyOrNull() != null && it in specDifficulties }
         .ifEmpty { default.cycle.filter { it in specDifficulties } }
-        .ifEmpty { default.cycle }
+        .ifEmpty { Difficulty.entries.map { it.name.lowercase() }.filter { it in specDifficulties } }
     return copy(
         spec = validSpec,
         cycle = validCycle,
@@ -129,6 +134,13 @@ private fun LadderSection.validated(
         holesStepPerRound = holesStepPerRound.takeIf { it in 0..10 } ?: default.holesStepPerRound,
     )
 }
+
+/** holes 表（已校验、非空、键均为合法枚举名）中最大的规格。 */
+private fun fallbackSpec(holes: Map<String, Map<String, Int>>): String =
+    BoardSpec.entries.map { it.name.lowercase() }.last { holes.containsKey(it) }
+
+private fun hardestDifficulty(difficulties: Map<String, Int>): String =
+    Difficulty.entries.map { it.name.lowercase() }.last { difficulties.containsKey(it) }
 
 /** Caps holes to retain minimum unique-solution clues: MINI 4, MEDIUM 8, CLASSIC 17. */
 internal fun maxHoles(spec: BoardSpec): Int =

@@ -13,9 +13,11 @@ import java.time.ZoneId
 /**
  * 每日挑战的换题时刻表：每天在 [zone] 的本地 [resetTime] 换题。
  *
- * [puzzleDay] = 当前窗口「开启那天」的 [zone] 日历日期：本地时间早于 [resetTime] 时仍属前一天。
- * 必须比较**本地钟面时间**，不能用 `now - 17h`：后者在时间线上做减法，
- * 夏令时切换日会把换题点漂到 18:00 / 16:00。与设备自身时区无关，全球玩家同一时刻换题。
+ * [puzzleDay] = 当前窗口「开启那天」的 [zone] 日历日期：早于当天换题时刻时仍属前一天。
+ * 换题时刻按本地日期 + [resetTime] 解析成瞬时再比较，不能用 `now - 17h`：后者在时间线上做减法，
+ * 夏令时切换日会把换题点漂到 18:00 / 16:00。[resetTime] 落在夏令时重复的一小时内取较早一次，
+ * 落在跳过的一小时内顺延到跳过之后（java.time 默认规则），窗口始终单调前进。
+ * 与设备自身时区无关，全球玩家同一时刻换题。
  */
 class DailySchedule(
     val zone: ZoneId,
@@ -23,9 +25,8 @@ class DailySchedule(
 ) {
 
     fun puzzleDay(now: Instant): LocalDate {
-        val local = now.atZone(zone)
-        val date = local.toLocalDate()
-        return if (local.toLocalTime() < resetTime) date.minusDays(1) else date
+        val date = now.atZone(zone).toLocalDate()
+        return if (now < windowStart(date)) date.minusDays(1) else date
     }
 
     /** [day] 这一期开始的时刻（该日 [zone] 本地 [resetTime]）。 */

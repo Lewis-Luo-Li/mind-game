@@ -253,6 +253,16 @@ class GameConfigParserTest {
     }
 
     @Test
+    fun `daily and ladder fall back to boards that exist in holes`() {
+        val config = parse("""{"sudoku":{"generator":{"holes":{"mini":{"easy":3,"medium":4}}}}}""")
+
+        assertEquals("mini", config.sudoku.daily.spec)
+        assertEquals("medium", config.sudoku.daily.difficulty)
+        assertEquals("mini", config.sudoku.ladder.spec)
+        assertEquals(listOf("easy", "medium"), config.sudoku.ladder.cycle)
+    }
+
+    @Test
     fun `wrongly typed daily or ladder fields fail`() {
         assertTrue(GameConfigParser.parse("""{"sudoku":{"daily":{"reset_time":1700}}}""").isFailure)
         assertTrue(GameConfigParser.parse("""{"sudoku":{"ladder":{"cycle":"easy"}}}""").isFailure)

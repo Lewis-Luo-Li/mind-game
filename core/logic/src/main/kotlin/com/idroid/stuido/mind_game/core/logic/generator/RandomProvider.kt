@@ -36,7 +36,7 @@ class RandomProvider(seed: Long? = null) {
      */
     fun nextInt(from: Int, until: Int): Int {
         require(until > from) { "until must be greater than from" }
-        return from + random.nextInt(until - from)
+        return (from + random.nextLong(until.toLong() - from)).toInt()
     }
 
     /**

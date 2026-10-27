@@ -21,4 +21,14 @@ class SplitMix64Test {
         repeat(9_000) { seen[random.nextInt(9)]++ }
         assertTrue(seen.all { it > 800 })
     }
+
+    @Test
+    fun `random provider supports ranges wider than Int`() {
+        val provider = RandomProvider(42L)
+        repeat(1_000) {
+            val value = provider.nextInt(Int.MIN_VALUE, Int.MAX_VALUE)
+            assertTrue(value < Int.MAX_VALUE)
+        }
+        assertEquals(-1, RandomProvider(1L).nextInt(-1, 0))
+    }
 }

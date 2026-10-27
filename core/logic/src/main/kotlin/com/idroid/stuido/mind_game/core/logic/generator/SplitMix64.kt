@@ -27,6 +27,16 @@ internal class SplitMix64(seed: Long) {
         }
     }
 
+    /** 返回 `0 until bound` 的均匀长整数（63 位拒绝采样）。 */
+    fun nextLong(bound: Long): Long {
+        require(bound > 0) { "bound must be positive" }
+        while (true) {
+            val bits = nextLong() ushr 1
+            val value = bits % bound
+            if (bits - value + (bound - 1) >= 0) return value
+        }
+    }
+
     companion object {
         private const val GOLDEN_GAMMA = -0x61c8864680b583ebL // 0x9E3779B97F4A7C15
 

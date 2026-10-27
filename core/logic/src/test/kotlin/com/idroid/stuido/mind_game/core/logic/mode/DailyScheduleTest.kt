@@ -59,6 +59,30 @@ class DailyScheduleTest {
     }
 
     @Test
+    fun `reset inside the repeated DST hour advances once and never goes back`() {
+        val early = DailySchedule(sydney, LocalTime.of(2, 30))
+        // 2026-04-05：02:00–02:59 出现两次（先 +11:00，后 +10:00），取较早一次 = 15:30Z
+        val firstReset = Instant.parse("2026-04-04T15:30:00Z")
+        assertEquals(firstReset, early.windowStart(LocalDate.of(2026, 4, 5)))
+        assertEquals(LocalDate.of(2026, 4, 4), early.puzzleDay(firstReset.minusSeconds(1)))
+        assertEquals(LocalDate.of(2026, 4, 5), early.puzzleDay(firstReset))
+        val secondOccurrence = Instant.parse("2026-04-04T16:30:00Z")
+        assertEquals(LocalDate.of(2026, 4, 5), early.puzzleDay(secondOccurrence))
+        assertEquals(early.windowStart(LocalDate.of(2026, 4, 6)), early.nextResetAt(secondOccurrence))
+    }
+
+    @Test
+    fun `reset inside the skipped DST hour moves to just after the gap`() {
+        val early = DailySchedule(sydney, LocalTime.of(2, 30))
+        // 2026-10-04：02:00 直接跳到 03:00；02:30 顺延为 03:30 (+11:00) = 16:30Z
+        val reset = Instant.parse("2026-10-03T16:30:00Z")
+        assertEquals(reset, early.windowStart(LocalDate.of(2026, 10, 4)))
+        assertEquals(LocalDate.of(2026, 10, 3), early.puzzleDay(reset.minusSeconds(1)))
+        assertEquals(LocalDate.of(2026, 10, 4), early.puzzleDay(reset))
+        assertEquals(reset, early.nextResetAt(reset.minusSeconds(1)))
+    }
+
+    @Test
     fun `seed is epoch day plus salt and from() reads config`() {
         val day = LocalDate.of(2026, 10, 25)
         assertEquals(day.toEpochDay() + 7, schedule.seedFor(day, 7))

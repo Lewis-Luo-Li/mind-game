@@ -82,6 +82,28 @@ class LadderPlanTest {
         assertEquals(64, stepped.holesFor(20 * 1000, config))
     }
 
+    @Test
+    fun `tight but feasible configs always meet the expert rules`() {
+        val tight = LadderPlan(LadderSection(cycle = listOf("easy", "expert"), levelsPerTier = 4, maxConsecutiveExpert = 2))
+        val singles = LadderPlan(LadderSection(maxConsecutiveExpert = 1))
+        for (round in 2..200) {
+            for ((plan, maxRun) in listOf(tight to 2, singles to 1)) {
+                val order = plan.roundOrder(round)
+                assertNotEquals(EXPERT, order.first())
+                assertNotEquals(EXPERT, order.last())
+                assertTrue(order.windowed(maxRun + 1).none { w -> w.all { it == EXPERT } })
+            }
+        }
+    }
+
+    @Test
+    fun `infeasible shuffle keeps the round ordered`() {
+        val infeasible = LadderPlan(LadderSection(cycle = listOf("easy", "expert"), levelsPerTier = 1))
+        assertEquals(listOf(EASY, EXPERT), infeasible.roundOrder(5))
+        val allExpert = LadderPlan(LadderSection(cycle = listOf("expert")))
+        assertEquals(List(5) { EXPERT }, allExpert.roundOrder(3))
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun `level zero is rejected`() {
         plan.difficultyFor(0)
