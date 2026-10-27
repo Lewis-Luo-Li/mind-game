@@ -42,6 +42,23 @@ extensions.configure<ApplicationExtension> {
     }
     buildTypes {
         getByName("release") {
+            // CI 用 -PrequireAdMobSecrets 强制校验：secret.properties 缺键时直接失败，
+            // 防止 release APK 静默回退到 Google 测试广告 ID。
+            val requireSecrets = providers.gradleProperty("requireAdMobSecrets")
+                .map { it.toBoolean() }
+                .getOrElse(false)
+            val adMobKeys = listOf(
+                "ADMOB_APP_ID",
+                "ADMOB_BANNER_UNIT_ID",
+                "ADMOB_INTERSTITIAL_UNIT_ID",
+                "ADMOB_REWARDED_UNIT_ID",
+            )
+            val missingKeys = adMobKeys.filter { adMobProps.getProperty(it).isNullOrBlank() }
+            if (requireSecrets && missingKeys.isNotEmpty()) {
+                throw GradleException(
+                    "secret.properties missing AdMob keys: ${missingKeys.joinToString()} — refusing to fall back to test IDs",
+                )
+            }
             if (adMobProps.getProperty("ADMOB_APP_ID") == null) {
                 logger.warn("secret.properties missing ADMOB_* keys — release will serve TEST ads")
             }

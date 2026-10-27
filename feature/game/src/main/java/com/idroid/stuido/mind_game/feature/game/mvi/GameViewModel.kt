@@ -85,6 +85,7 @@ class GameViewModel(
             is GameEvent.ToggleNote -> ifRunning {
                 _uiState.update { GameReducer.toggleNote(it, event.index, event.value) }
             }
+            is GameEvent.KeypadDigit -> ifRunning { keypadDigit(event.digit) }
             GameEvent.Erase -> ifRunning { erase() }
             GameEvent.Undo -> ifRunning {
                 _uiState.update { GameReducer.undo(it) }
@@ -196,6 +197,18 @@ class GameViewModel(
         // 填对：若全盘填完 => 完成
         if (inputValidator.isComplete(_uiState.value.board)) {
             finishAsSuccess()
+        }
+    }
+
+    /** 数字键按下：按 dispatch 时点的最新 state 解析（选中格/given/输入模式都在此处读取）。 */
+    private fun keypadDigit(digit: Int) {
+        val s = _uiState.value
+        val idx = s.selection.index ?: return
+        if (idx in s.board.givens) return
+        if (s.selection.inputMode == InputMode.NOTE) {
+            _uiState.update { GameReducer.toggleNote(it, idx, digit) }
+        } else {
+            inputNumber(idx, digit)
         }
     }
 
