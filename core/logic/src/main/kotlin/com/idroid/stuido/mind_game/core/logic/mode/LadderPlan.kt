@@ -51,7 +51,9 @@ class LadderPlan(private val ladder: LadderSection) {
     fun holesFor(level: Int, difficultyConfig: DifficultyConfig): Int? {
         val base = difficultyConfig.holeCount(spec, difficultyFor(level)) ?: return null
         val extra = ladder.holesStepPerRound.toLong() * (roundOf(level) - 1)
-        return (base + extra).coerceAtMost(maxHoles(spec).toLong()).toInt()
+        // 上限取该规格配置中最难档的挖空数：更稀疏的盘面贪心挖空几乎生成不出来。
+        val cap = minOf(maxHoles(spec), difficultyConfig.holes[spec].orEmpty().values.maxOrNull() ?: base)
+        return (base + extra).coerceAtMost(cap.toLong()).toInt()
     }
 
     /**
