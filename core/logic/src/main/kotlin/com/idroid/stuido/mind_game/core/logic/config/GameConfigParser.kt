@@ -10,6 +10,9 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 object GameConfigParser {
     const val SUPPORTED_SCHEMA_VERSION = 1
@@ -45,7 +48,7 @@ internal fun GameRemoteConfig.validated(): GameRemoteConfig {
         if (rules.lives in 1..9 && rules.hints in 0..9) rules else GameRules()
     }
     val validOverrides = sudoku.rules.overrides.filter { override ->
-        (override.mode == null || override.mode in setOf("free", "daily")) &&
+        (override.mode == null || override.mode in setOf("free", "daily", "ladder")) &&
             (override.spec == null || BoardSpec.entries.any { it.name.lowercase() == override.spec }) &&
             (override.difficulty == null ||
                 Difficulty.entries.any { it.name.lowercase() == override.difficulty }) &&
@@ -61,13 +64,17 @@ internal fun GameRemoteConfig.validated(): GameRemoteConfig {
         }
     }
 
+    val finalHoles = validHoles.ifEmpty { defaults.sudoku.generator.holes }
+
     return copy(
         sudoku = sudoku.copy(
             generator = sudoku.generator.copy(
                 maxRetry = sudoku.generator.maxRetry.takeIf { it in 1..1000 }
                     ?: defaults.sudoku.generator.maxRetry,
-                holes = validHoles.ifEmpty { defaults.sudoku.generator.holes },
+                holes = finalHoles,
             ),
+            daily = sudoku.daily.validated(defaults.sudoku.daily, finalHoles),
+            ladder = sudoku.ladder.validated(defaults.sudoku.ladder, finalHoles),
             rules = sudoku.rules.copy(
                 default = validDefaultRules,
                 overrides = validOverrides,
@@ -81,8 +88,50 @@ internal fun GameRemoteConfig.validated(): GameRemoteConfig {
     )
 }
 
+private val RESET_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+internal fun parseResetTime(value: String): LocalTime? =
+    runCatching { LocalTime.parse(value, RESET_TIME_FORMAT) }.getOrNull()
+
+internal fun parseZone(value: String): ZoneId? = runCatching { ZoneId.of(value) }.getOrNull()
+
+/** 规格/难度须在已校验的 holes 表中可用，否则整组回退默认；时区与换题时间各自回退。 */
+private fun DailySection.validated(
+    default: DailySection,
+    holes: Map<String, Map<String, Int>>,
+): DailySection {
+    val available = holes[spec]?.containsKey(difficulty) == true
+    return copy(
+        timezone = timezone.takeIf { parseZone(it) != null } ?: default.timezone,
+        resetTime = resetTime.takeIf { parseResetTime(it) != null } ?: default.resetTime,
+        spec = if (available) spec else default.spec,
+        difficulty = if (available) difficulty else default.difficulty,
+    )
+}
+
+/** 规格须在 holes 表中；cycle 只保留该规格可用的难度（去重保序），为空则回退默认。 */
+private fun LadderSection.validated(
+    default: LadderSection,
+    holes: Map<String, Map<String, Int>>,
+): LadderSection {
+    val validSpec = spec.takeIf { holes.containsKey(it) } ?: default.spec
+    val specDifficulties = holes[validSpec].orEmpty().keys
+    val validCycle = cycle.distinct()
+        .filter { it.toDifficultyOrNull() != null && it in specDifficulties }
+        .ifEmpty { default.cycle.filter { it in specDifficulties } }
+        .ifEmpty { default.cycle }
+    return copy(
+        spec = validSpec,
+        cycle = validCycle,
+        levelsPerTier = levelsPerTier.takeIf { it in 1..100 } ?: default.levelsPerTier,
+        shuffleFromRound = shuffleFromRound.takeIf { it >= 1 } ?: default.shuffleFromRound,
+        maxConsecutiveExpert = maxConsecutiveExpert.takeIf { it >= 1 } ?: default.maxConsecutiveExpert,
+        holesStepPerRound = holesStepPerRound.takeIf { it in 0..10 } ?: default.holesStepPerRound,
+    )
+}
+
 /** Caps holes to retain minimum unique-solution clues: MINI 4, MEDIUM 8, CLASSIC 17. */
-private fun maxHoles(spec: BoardSpec): Int =
+internal fun maxHoles(spec: BoardSpec): Int =
     spec.size * spec.size - when (spec) {
         BoardSpec.MINI -> 4
         BoardSpec.MEDIUM -> 8
@@ -126,6 +175,20 @@ private fun JsonElement.validateConfigTypes() {
         sudoku.validateObject("daily", "$.sudoku") { daily ->
             daily.validateBoolean("enabled", "$.sudoku.daily")
             daily.validateLong("seed_salt", "$.sudoku.daily")
+            daily.validateString("timezone", "$.sudoku.daily")
+            daily.validateString("reset_time", "$.sudoku.daily")
+            daily.validateString("spec", "$.sudoku.daily")
+            daily.validateString("difficulty", "$.sudoku.daily")
+        }
+        sudoku.validateObject("ladder", "$.sudoku") { ladder ->
+            ladder.validateBoolean("enabled", "$.sudoku.ladder")
+            ladder.validateLong("seed_salt", "$.sudoku.ladder")
+            ladder.validateString("spec", "$.sudoku.ladder")
+            ladder.validateArray("cycle", "$.sudoku.ladder") { element, path -> element.validateString(path) }
+            ladder.validateInt("levels_per_tier", "$.sudoku.ladder")
+            ladder.validateInt("shuffle_from_round", "$.sudoku.ladder")
+            ladder.validateInt("max_consecutive_expert", "$.sudoku.ladder")
+            ladder.validateInt("holes_step_per_round", "$.sudoku.ladder")
         }
     }
     root.validateObject("rewards", "$") { rewards ->

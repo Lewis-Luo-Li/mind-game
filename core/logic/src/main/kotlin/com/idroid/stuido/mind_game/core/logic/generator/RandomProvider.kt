@@ -18,11 +18,13 @@ import kotlin.random.Random
  * val provider = RandomProvider(seed = mixedSeed)
  * ```
  *
+ * 带种子时使用自持的 [SplitMix64]，保证同一种子在任何 Kotlin / App 版本下序列不变。
+ *
  * @param seed 随机种子；若不传（或传 null）则自动使用系统随机种子。
  */
 class RandomProvider(seed: Long? = null) {
 
-    private val random: Random = if (seed != null) Random(seed) else Random.Default
+    private val random = SplitMix64(seed ?: Random.Default.nextLong())
 
     /**
      * 返回 [until] 之间的伪随机非负整数，即 `0 until until`。
@@ -32,7 +34,10 @@ class RandomProvider(seed: Long? = null) {
     /**
      * 返回 [from]（含）到 [until]（不含）之间的伪随机整数。
      */
-    fun nextInt(from: Int, until: Int): Int = random.nextInt(from, until)
+    fun nextInt(from: Int, until: Int): Int {
+        require(until > from) { "until must be greater than from" }
+        return from + random.nextInt(until - from)
+    }
 
     /**
      * 对给定 [list] 进行原地 Fisher-Yates 洗牌并返回同一实例。

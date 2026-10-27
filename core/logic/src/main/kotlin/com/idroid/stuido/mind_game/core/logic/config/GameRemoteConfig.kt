@@ -58,6 +58,7 @@ data class SudokuSection(
     val generator: GeneratorSection = GeneratorSection(),
     val rules: RulesSection = RulesSection(),
     val daily: DailySection = DailySection(),
+    val ladder: LadderSection = LadderSection(),
 )
 
 @Serializable
@@ -82,12 +83,59 @@ data class RuleOverride(
     val hints: Int? = null,
 )
 
+/**
+ * 每日挑战：每天在 [timezone] 的 [resetTime]（HH:mm）换题；所有玩家同一时刻拿到同一道题。
+ * [spec] / [difficulty] 为固定规格与难度（小写枚举名）。
+ */
 @Serializable
 data class DailySection(
     val enabled: Boolean = true,
     @SerialName("seed_salt")
     val seedSalt: Long = 0,
-)
+    val timezone: String = DEFAULT_DAILY_TIMEZONE,
+    @SerialName("reset_time")
+    val resetTime: String = DEFAULT_DAILY_RESET_TIME,
+    val spec: String = "classic",
+    val difficulty: String = "hard",
+) {
+    fun boardSpec(): BoardSpec = spec.toBoardSpecOrNull() ?: BoardSpec.CLASSIC
+    fun difficultyLevel(): Difficulty = difficulty.toDifficultyOrNull() ?: Difficulty.HARD
+}
+
+/**
+ * 天梯（Level N）：一轮 = [cycle] 中每档难度各 [levelsPerTier] 关；
+ * 第 [shuffleFromRound] 轮起每轮内顺序确定性打乱，Expert 连续不超过 [maxConsecutiveExpert] 关。
+ * [holesStepPerRound]：每多一轮，各档挖空数增加的格数（0 = 每轮难度相同）。
+ */
+@Serializable
+data class LadderSection(
+    val enabled: Boolean = true,
+    @SerialName("seed_salt")
+    val seedSalt: Long = 0,
+    val spec: String = "classic",
+    val cycle: List<String> = listOf("easy", "medium", "hard", "expert"),
+    @SerialName("levels_per_tier")
+    val levelsPerTier: Int = 5,
+    @SerialName("shuffle_from_round")
+    val shuffleFromRound: Int = 2,
+    @SerialName("max_consecutive_expert")
+    val maxConsecutiveExpert: Int = 2,
+    @SerialName("holes_step_per_round")
+    val holesStepPerRound: Int = 0,
+) {
+    fun boardSpec(): BoardSpec = spec.toBoardSpecOrNull() ?: BoardSpec.CLASSIC
+    fun cycleDifficulties(): List<Difficulty> =
+        cycle.mapNotNull { it.toDifficultyOrNull() }.distinct().ifEmpty { Difficulty.entries }
+}
+
+const val DEFAULT_DAILY_TIMEZONE = "Australia/Sydney"
+const val DEFAULT_DAILY_RESET_TIME = "17:00"
+
+internal fun String.toBoardSpecOrNull(): BoardSpec? =
+    BoardSpec.entries.firstOrNull { it.name.lowercase() == this }
+
+internal fun String.toDifficultyOrNull(): Difficulty? =
+    Difficulty.entries.firstOrNull { it.name.lowercase() == this }
 
 @Serializable
 data class RewardsSection(

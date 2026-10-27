@@ -14,7 +14,16 @@
       "default": { "lives": 3, "hints": 3 },
       "overrides": [ { "mode": "daily", "lives": 3, "hints": 3 } ]
     },
-    "daily": { "enabled": true, "seed_salt": 0 }
+    "daily": {
+      "enabled": true, "seed_salt": 0,
+      "timezone": "Australia/Sydney", "reset_time": "17:00",
+      "spec": "classic", "difficulty": "hard"
+    },
+    "ladder": {
+      "enabled": true, "seed_salt": 0, "spec": "classic",
+      "cycle": ["easy", "medium", "hard", "expert"], "levels_per_tier": 5,
+      "shuffle_from_round": 2, "max_consecutive_expert": 2, "holes_step_per_round": 0
+    }
   },
   "rewards": {
     "extra_life": { "enabled": true, "amount": 1, "max_per_game": 2, "allow_in_daily": true },
