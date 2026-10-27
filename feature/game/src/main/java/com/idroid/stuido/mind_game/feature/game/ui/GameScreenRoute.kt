@@ -102,11 +102,12 @@ fun GameScreenRoute(
     LaunchedEffect(vm) {
         vm.effect.collect { effect ->
             when (effect) {
-                is GameEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
-                is GameEffect.NewGameFailed -> snackbarHostState.showSnackbar(effect.reason)
-                is GameEffect.HintFilled -> snackbarHostState.showSnackbar(
-                    context.getString(R.string.hint_filled, effect.value),
-                )
+                // 提示条另起协程：showSnackbar 会挂起，不能阻塞后续终局效果（进度落盘）。
+                is GameEffect.ShowMessage -> launch { snackbarHostState.showSnackbar(effect.message) }
+                is GameEffect.NewGameFailed -> launch { snackbarHostState.showSnackbar(effect.reason) }
+                is GameEffect.HintFilled -> launch {
+                    snackbarHostState.showSnackbar(context.getString(R.string.hint_filled, effect.value))
+                }
                 // 终局：先让玩家看到结算面板，再交给宿主做插页广告频控判定。
                 is GameEffect.PuzzleCompleted -> {
                     // 进度立即落盘：玩家可能在延迟内点「下一关」离开本屏。

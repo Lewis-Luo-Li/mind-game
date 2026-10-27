@@ -120,7 +120,7 @@ fun MindGameApp(themePrefs: ThemePrefs) {
             spec = req.spec,
             difficulty = req.difficulty,
             seed = req.seed,
-            difficultyConfig = difficultyConfig,
+            difficultyConfig = req.difficultyConfigFor(difficultyConfig),
             maxMistakes = req.rules.lives,
             maxHints = req.rules.hints,
             rewards = gameConfig.rewards,

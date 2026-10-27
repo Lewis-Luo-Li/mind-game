@@ -46,4 +46,28 @@ class PlayRequestsTest {
         assertEquals(Difficulty.EASY, ladderPlayRequest(1, config, 1).difficulty)
         assertEquals(Difficulty.EXPERT, ladderPlayRequest(1, config, 20).difficulty)
     }
+
+    @Test
+    fun `ladder holes step applies to later rounds`() {
+        val stepped = config.copy(
+            sudoku = config.sudoku.copy(ladder = config.sudoku.ladder.copy(holesStepPerRound = 2)),
+        )
+        val base = stepped.toDifficultyConfig()
+        val round1 = ladderPlayRequest(1, stepped, 1)
+        val round2 = ladderPlayRequest(2, stepped, 21)
+
+        assertEquals(base.holeCount(round1.spec, round1.difficulty), round1.holes)
+        assertEquals(base.holeCount(round2.spec, round2.difficulty)!! + 2, round2.holes)
+        assertEquals(
+            round2.holes,
+            round2.difficultyConfigFor(base).holeCount(round2.spec, round2.difficulty),
+        )
+    }
+
+    @Test
+    fun `requests without holes keep the base difficulty config`() {
+        val base = config.toDifficultyConfig()
+        val daily = dailyPlayRequest(1, config, Instant.parse("2026-10-25T06:00:00Z"))
+        assertEquals(base, daily.difficultyConfigFor(base))
+    }
 }

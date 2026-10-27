@@ -1,5 +1,6 @@
 package com.idroid.stuido.mind_game.sudoku
 
+import com.idroid.stuido.mind_game.core.logic.config.DifficultyConfig
 import com.idroid.stuido.mind_game.core.logic.config.GameRemoteConfig
 import com.idroid.stuido.mind_game.core.logic.mode.DailySchedule
 import com.idroid.stuido.mind_game.core.logic.mode.LadderPlan
@@ -28,6 +29,7 @@ internal fun dailyPlayRequest(id: Long, config: GameRemoteConfig, now: Instant):
 internal fun ladderPlayRequest(id: Long, config: GameRemoteConfig, level: Int): PlayRequest {
     val plan = LadderPlan(config.sudoku.ladder)
     val difficulty = plan.difficultyFor(level)
+    val holes = plan.holesFor(level, config.toDifficultyConfig())
     return PlayRequest(
         id = id,
         mode = GameMode.LADDER,
@@ -36,5 +38,13 @@ internal fun ladderPlayRequest(id: Long, config: GameRemoteConfig, level: Int): 
         seed = plan.seedFor(level),
         rules = config.rulesFor("ladder", plan.spec, difficulty),
         level = level,
+        holes = holes,
     )
+}
+
+/** 按 [PlayRequest.holes] 覆盖本局规格/难度的挖空数，其余组合保持 [base]。 */
+internal fun PlayRequest.difficultyConfigFor(base: DifficultyConfig): DifficultyConfig {
+    val override = holes ?: return base
+    val forSpec = base.holes[spec].orEmpty() + (difficulty to override)
+    return base.copy(holes = base.holes + (spec to forSpec))
 }

@@ -21,4 +21,6 @@ data class PlayRequest(
     val puzzleDay: LocalDate? = null,
     /** 天梯关卡号。 */
     val level: Int? = null,
+    /** 覆盖该规格/难度的挖空数（天梯 holes_step_per_round 逐轮加难）。 */
+    val holes: Int? = null,
 )
