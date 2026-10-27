@@ -81,7 +81,8 @@ internal fun HomeScreen(
             )
         }
 
-        SectionCard(stringResource(R.string.section_board_size)) {
+        // 每日挑战规格/难度固定取自配置，不展示尺寸选择。
+        if (mode != GameMode.DAILY) SectionCard(stringResource(R.string.section_board_size)) {
             SingleChoiceChips(
                 labelsToValues = listOf(
                     stringResource(R.string.board_x4) to BoardSpec.MINI,
@@ -105,12 +106,10 @@ internal fun HomeScreen(
             }
         } else {
             if (mode == GameMode.DAILY) {
-                availableDiff.maxByOrNull { it.ordinal }?.let { hardest ->
-                    Text(
-                        stringResource(R.string.home_daily_note, hardest),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
+                Text(
+                    stringResource(R.string.home_daily_note, gameConfig.sudoku.daily.difficultyLevel()),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
 
@@ -119,7 +118,7 @@ internal fun HomeScreen(
                 val selectedSpec = effectiveSpec
                 val finalDifficulty = when (mode) {
                     GameMode.DAILY -> availableDiff.maxByOrNull { it.ordinal }
-                    GameMode.FREE -> difficulty.takeIf { it in availableDiff } ?: effectiveDifficulty
+                    GameMode.FREE, GameMode.LADDER -> difficulty.takeIf { it in availableDiff } ?: effectiveDifficulty
                 }
                 if (selectedSpec != null && finalDifficulty != null) {
                     val seed = if (mode == GameMode.DAILY) {

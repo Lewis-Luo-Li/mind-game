@@ -26,6 +26,7 @@ import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
 import com.idroid.stuido.mind_game.core.logic.config.DifficultyConfig
 import com.idroid.stuido.mind_game.core.logic.config.GameRemoteConfig
+import com.idroid.stuido.mind_game.core.logic.mode.DailySchedule
 import com.idroid.stuido.mind_game.feature.game.GameMode
 import com.idroid.stuido.mind_game.feature.game.GameOutcome
 import com.idroid.stuido.mind_game.feature.game.ads.FakeRewardedAdController
@@ -35,6 +36,7 @@ import com.idroid.stuido.mind_game.feature.game.ui.GameScreenRoute
 import com.idroid.stuido.mind_game.main.model.GameId
 import com.idroid.stuido.mind_game.main.model.gameCatalog
 import com.idroid.stuido.mind_game.main.page.MainScreen
+import java.time.Instant
 
 /**
  * 页内导航目标（非对局态）。
@@ -95,6 +97,7 @@ fun MindGameApp(themePrefs: ThemePrefs) {
     // 插页频控：进程内内存态（不持久化），跨对局累计完成的局数。
     val interstitialGate = remember { InterstitialFrequencyGate() }
 
+    val progressStore = remember { PlayerProgressStore(context) }
     var playRequest by remember { mutableStateOf<PlayRequest?>(null) }
     var backStack by rememberSaveable(
         stateSaver = listSaver(
@@ -117,7 +120,7 @@ fun MindGameApp(themePrefs: ThemePrefs) {
             spec = req.spec,
             difficulty = req.difficulty,
             seed = req.seed,
-            difficultyConfig = difficultyConfig,
+            difficultyConfig = req.difficultyConfigFor(difficultyConfig),
             maxMistakes = req.rules.lives,
             maxHints = req.rules.hints,
             rewards = gameConfig.rewards,
@@ -136,6 +139,14 @@ fun MindGameApp(themePrefs: ThemePrefs) {
             },
             showDebugSolve = BuildConfig.DEBUG,
             sessionKey = "sudoku-game-${req.id}",
+            level = req.level,
+            onOutcome = { outcome -> progressStore.record(req, outcome) },
+            onNextLevel = req.level?.let { level ->
+                { playRequest = ladderPlayRequest(nextSessionId(), gameConfig, level + 1) }
+            },
+            nextDailyAt = req.puzzleDay?.let { day ->
+                DailySchedule.from(gameConfig.sudoku.daily).windowStart(day.plusDays(1))
+            },
         )
         // 对局中打开设置：以覆盖页渲染在游玩屏之上，GameScreenRoute 仍在组合中，
         // ViewModel 与已暂停的对局状态在返回后原样恢复。
@@ -179,7 +190,9 @@ fun MindGameApp(themePrefs: ThemePrefs) {
                 onBack = ::pop,
                 onOpenSettings = { navigate(Dest.Settings) },
                 onStart = { mode, spec, difficulty, seed ->
-                    playRequest = PlayRequest(
+                    playRequest = if (mode == GameMode.DAILY) {
+                        dailyPlayRequest(nextSessionId(), gameConfig, Instant.now())
+                    } else PlayRequest(
                         id = nextSessionId(),
                         mode = mode,
                         spec = spec,

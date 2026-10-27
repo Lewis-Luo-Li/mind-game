@@ -54,6 +54,12 @@ fun FinishPanel(
     onRetrySamePuzzle: () -> Unit,
     onNewGame: () -> Unit,
     onExit: () -> Unit,
+    /** 天梯解出后非 null：主按钮改为「下一关」。 */
+    onNextLevel: (() -> Unit)? = null,
+    /** 每日/天梯题目固定，「新游戏」无意义，传 false 隐藏。 */
+    allowNewGame: Boolean = true,
+    /** 结算附注（如每日挑战的下一期倒计时）。 */
+    footnote: String? = null,
 ) {
     val title = when (outcome) {
         GameOutcome.SOLVED -> stringResource(R.string.finish_victory)
@@ -91,6 +97,10 @@ fun FinishPanel(
                     maxHints,
                 ),
             )
+            if (footnote != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(footnote, style = MaterialTheme.typography.bodySmall)
+            }
             Spacer(Modifier.height(16.dp))
             // 命数用尽且奖励可领：「看广告 +N 命」主按钮，复活后继续本局。
             if (outcome == GameOutcome.FAILED && watchAdLabel != null && onWatchAd != null) {
@@ -98,10 +108,17 @@ fun FinishPanel(
                 Spacer(Modifier.height(4.dp))
             }
             if (outcome == GameOutcome.SOLVED) {
-                Button(onClick = onNewGame) { Text(stringResource(R.string.action_new_game)) }
+                when {
+                    onNextLevel != null ->
+                        Button(onClick = onNextLevel) { Text(stringResource(R.string.action_next_level)) }
+                    allowNewGame ->
+                        Button(onClick = onNewGame) { Text(stringResource(R.string.action_new_game)) }
+                }
             } else {
                 Button(onClick = onRetrySamePuzzle) { Text(stringResource(R.string.action_retry_same)) }
-                TextButton(onClick = onNewGame) { Text(stringResource(R.string.action_new_game)) }
+                if (allowNewGame) {
+                    TextButton(onClick = onNewGame) { Text(stringResource(R.string.action_new_game)) }
+                }
             }
             TextButton(onClick = onExit) { Text(stringResource(R.string.action_exit)) }
         }

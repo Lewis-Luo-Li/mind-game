@@ -63,6 +63,8 @@ import com.idroid.stuido.mind_game.core.ui.theme.Theme
 import com.idroid.stuido.mind_game.core.ui.util.VisibilityConfig
 import com.idroid.stuido.mind_game.feature.game.GameMode
 import com.idroid.stuido.mind_game.feature.game.GameOutcome
+import java.time.Duration
+import java.time.Instant
 import com.idroid.stuido.mind_game.feature.game.GameStatus
 import com.idroid.stuido.mind_game.feature.game.R
 import com.idroid.stuido.mind_game.feature.game.ads.BannerAdSlot
@@ -84,8 +86,18 @@ private fun describeTitle(state: GameUiState): String {
         6 -> "6×6"
         else -> "9×9"
     }
+    val level = state.config.level
+    if (state.config.mode == GameMode.LADDER && level != null) {
+        return "${stringResource(R.string.label_level, level)} · ${state.config.difficulty.name}"
+    }
     val mode = if (state.config.mode == GameMode.DAILY) "· ${stringResource(R.string.label_daily)}" else ""
     return "$specName Sudoku · ${state.config.difficulty.name}$mode"
+}
+
+@Composable
+private fun nextDailyFootnote(nextAt: Instant, now: Instant): String {
+    val minutes = Duration.between(now, nextAt).toMinutes().coerceAtLeast(0)
+    return stringResource(R.string.finish_next_daily, minutes / 60, minutes % 60)
 }
 
 /**
@@ -109,6 +121,12 @@ fun GameScreen(
     bannerAd: BannerAdSlot? = null,
     /** 横幅重载键：开局/重开变化时触发新一轮加载。 */
     bannerReloadKey: Any? = null,
+    /** 天梯解出后的「下一关」；null = 不展示。 */
+    onNextLevel: (() -> Unit)? = null,
+    /** 每日挑战下一期开始时刻：解出后在结算面板显示倒计时。 */
+    nextDailyAt: Instant? = null,
+    /** 当前时刻来源（预览/测试可注入）。 */
+    now: () -> Instant = Instant::now,
 ) {
     val status = state.progress.status
     val finished = status == GameStatus.FINISHED
@@ -413,6 +431,11 @@ fun GameScreen(
                     onRetrySamePuzzle = { dispatch(GameEvent.RetrySamePuzzle) },
                     onNewGame = { dispatch(GameEvent.Restart) },
                     onExit = onExit,
+                    onNextLevel = onNextLevel,
+                    allowNewGame = state.config.mode == GameMode.FREE,
+                    footnote = nextDailyAt
+                        ?.takeIf { state.progress.outcome == GameOutcome.SOLVED }
+                        ?.let { nextDailyFootnote(it, now()) },
                 )
             }
         }
@@ -467,9 +490,19 @@ private fun gamePreview(
     state: GameUiState,
     dispatch: (GameEvent) -> Unit = {},
     onExit: () -> Unit = {},
+    onNextLevel: (() -> Unit)? = null,
+    nextDailyAt: Instant? = null,
 ) {
     MindgameTheme() {
-        GameScreen(state = state, dispatch = dispatch, onExit = onExit, onOpenSettings = {})
+        GameScreen(
+            state = state,
+            dispatch = dispatch,
+            onExit = onExit,
+            onOpenSettings = {},
+            onNextLevel = onNextLevel,
+            nextDailyAt = nextDailyAt,
+            now = { PREVIEW_NOW },
+        )
     }
 }
 
@@ -642,4 +675,33 @@ private fun GamePreviewRunning6() {
 @Composable
 private fun GamePreviewRunning9() {
     gamePreview(runningFullState(9, PREVIEW_SOLUTION_9, PREVIEW_GIVENS_9, BoardSpec.CLASSIC, selIndex = 41))
+}
+
+private val PREVIEW_NOW: Instant = Instant.parse("2026-10-25T02:15:00Z")
+
+@Preview(showBackground = true, name = "Game · Ladder solved (Next level)", widthDp = 420)
+@Composable
+private fun GamePreviewLadderSolved() {
+    val state = victoryMiniState()
+    gamePreview(
+        state.copy(config = state.config.copy(mode = GameMode.LADDER, level = 12, difficulty = Difficulty.MEDIUM)),
+        onNextLevel = {},
+    )
+}
+
+@Preview(showBackground = true, name = "Game · Daily solved (countdown)", widthDp = 420)
+@Composable
+private fun GamePreviewDailySolved() {
+    val state = victoryMiniState()
+    gamePreview(
+        state.copy(config = state.config.copy(mode = GameMode.DAILY, difficulty = Difficulty.HARD)),
+        nextDailyAt = Instant.parse("2026-10-25T06:00:00Z"),
+    )
+}
+
+@Preview(showBackground = true, name = "Game · Ladder failed (Retry only)", widthDp = 420)
+@Composable
+private fun GamePreviewLadderFailed() {
+    val state = failedMiniState()
+    gamePreview(state.copy(config = state.config.copy(mode = GameMode.LADDER, level = 3)))
 }

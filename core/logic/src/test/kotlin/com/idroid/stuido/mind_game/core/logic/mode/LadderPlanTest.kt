@@ -72,14 +72,18 @@ class LadderPlanTest {
     }
 
     @Test
-    fun `holes follow tier and optional per round step capped at minimum clues`() {
+    fun `holes follow tier and optional per round step capped at hardest configured tier`() {
         val config = DifficultyConfig.default()
         assertEquals(36, plan.holesFor(1, config))
         assertEquals(55, plan.holesFor(16, config))
 
         val stepped = LadderPlan(LadderSection(holesStepPerRound = 2, shuffleFromRound = Int.MAX_VALUE))
         assertEquals(38, stepped.holesFor(21, config))
-        assertEquals(64, stepped.holesFor(20 * 1000, config))
+        assertEquals(55, stepped.holesFor(20 * 1000, config))
+        val bigStep = LadderPlan(LadderSection(holesStepPerRound = 10))
+        val round2 = (21..40).map { bigStep.difficultyFor(it) to bigStep.holesFor(it, config)!! }
+        assertTrue(round2.all { (_, holes) -> holes <= 55 })
+        assertTrue(round2.filter { (tier, _) -> tier == EXPERT }.all { (_, holes) -> holes == 55 })
     }
 
     @Test

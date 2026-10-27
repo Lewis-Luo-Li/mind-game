@@ -5,8 +5,10 @@ package com.idroid.stuido.mind_game.feature.game
  *
  *  - [FREE] 自由模式：玩家自选规格与难度，服务器/本地随机生成，题目不可预测。
  *  - [DAILY] 每日挑战：使用"今日固定种子"生成，同一天内题目一致且可跨设备复现。
+ *  - [LADDER] 天梯（Level N）：每关固定种子与难度，解出才解锁下一关。
  */
 enum class GameMode {
     FREE,
     DAILY,
+    LADDER,
 }

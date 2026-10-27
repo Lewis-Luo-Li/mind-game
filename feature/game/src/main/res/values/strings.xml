@@ -12,6 +12,9 @@
     <string name="game_busy_generating">Generating puzzle…</string>
     <string name="game_not_started">Sudoku</string>
     <string name="label_daily">Daily</string>
+    <string name="label_level">Level %1$d</string>
+    <string name="action_next_level">Next level</string>
+    <string name="finish_next_daily">Next daily challenge in %1$dh %2$02dm</string>
 
     <!-- ===== 顶部导航 / 状态行 ===== -->
     <string name="cd_nav_back">Back</string>

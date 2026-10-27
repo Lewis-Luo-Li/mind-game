@@ -28,6 +28,7 @@ import com.idroid.stuido.mind_game.feature.game.mvi.GameEvent
 import com.idroid.stuido.mind_game.feature.game.mvi.GameViewModel
 import com.idroid.stuido.mind_game.feature.game.engine.GameFactory
 import kotlinx.coroutines.delay
+import java.time.Instant
 import kotlinx.coroutines.launch
 
 /** 终局面板出现到触发插页广告判定之间的小延迟，让玩家先看到结算结果。 */
@@ -66,6 +67,10 @@ fun GameScreenRoute(
     onGameFinished: (outcome: GameOutcome, firstFinish: Boolean) -> Unit = { _, _ -> },
     showDebugSolve: Boolean = false,
     sessionKey: String = "default-session",
+    level: Int? = null,
+    onNextLevel: (() -> Unit)? = null,
+    nextDailyAt: Instant? = null,
+    onOutcome: (outcome: GameOutcome) -> Unit = {},
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -91,27 +96,34 @@ fun GameScreenRoute(
 
     // 首次进入（本会话挂载）自动开局（生成 + 铺盘）；后续由 Restart / FinishPanel 驱动。
     LaunchedEffect(vm) {
-        vm.dispatch(GameEvent.NewGame(mode, spec, difficulty, seed, maxMistakes, maxHints, rewards))
+        vm.dispatch(GameEvent.NewGame(mode, spec, difficulty, seed, maxMistakes, maxHints, rewards, level))
     }
 
     LaunchedEffect(vm) {
         vm.effect.collect { effect ->
             when (effect) {
-                is GameEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
-                is GameEffect.NewGameFailed -> snackbarHostState.showSnackbar(effect.reason)
-                is GameEffect.HintFilled -> snackbarHostState.showSnackbar(
-                    context.getString(R.string.hint_filled, effect.value),
-                )
+                // 提示条另起协程：showSnackbar 会挂起，不能阻塞后续终局效果（进度落盘）。
+                is GameEffect.ShowMessage -> launch { snackbarHostState.showSnackbar(effect.message) }
+                is GameEffect.NewGameFailed -> launch { snackbarHostState.showSnackbar(effect.reason) }
+                is GameEffect.HintFilled -> launch {
+                    snackbarHostState.showSnackbar(context.getString(R.string.hint_filled, effect.value))
+                }
                 // 终局：先让玩家看到结算面板，再交给宿主做插页广告频控判定。
                 is GameEffect.PuzzleCompleted -> {
+                    // 进度立即落盘：玩家可能在延迟内点「下一关」离开本屏。
+                    onOutcome(GameOutcome.SOLVED)
                     delay(FINISH_CALLBACK_DELAY_MS)
                     onGameFinished(GameOutcome.SOLVED, firstFinishOfInstance(effect.gameInstance))
                 }
                 is GameEffect.SolutionRevealed -> {
+                    onOutcome(GameOutcome.REVEALED)
                     delay(FINISH_CALLBACK_DELAY_MS)
                     onGameFinished(GameOutcome.REVEALED, firstFinishOfInstance(effect.gameInstance))
                 }
-                is GameEffect.GameOver -> onGameFinished(GameOutcome.FAILED, firstFinishOfInstance(effect.gameInstance))
+                is GameEffect.GameOver -> {
+                    onOutcome(GameOutcome.FAILED)
+                    onGameFinished(GameOutcome.FAILED, firstFinishOfInstance(effect.gameInstance))
+                }
                 else -> Unit
             }
         }
@@ -156,5 +168,7 @@ fun GameScreenRoute(
         bannerAd = bannerAd,
         // 每次开局（NewGame/Restart/RetrySamePuzzle）gameInstance 递增 → 横幅重载。
         bannerReloadKey = "$sessionKey-${state.progress.gameInstance}",
+        onNextLevel = onNextLevel,
+        nextDailyAt = nextDailyAt,
     )
 }
