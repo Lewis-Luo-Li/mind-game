@@ -1,5 +1,5 @@
 object Config {
-    const val COMPILE_SDK = 36
+    const val COMPILE_SDK = 37
     const val MIN_SDK = 36
     const val VERSION_CODE = 1
     const val VERSION_NAME = "1.0"
