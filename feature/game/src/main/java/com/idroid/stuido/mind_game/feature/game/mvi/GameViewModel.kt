@@ -66,13 +66,13 @@ class GameViewModel(
         when (event) {
             is GameEvent.NewGame -> newGame(
                 event.mode, event.spec, event.difficulty, event.seed,
-                event.maxMistakes, event.maxHints, event.rewards,
+                event.maxMistakes, event.maxHints, event.rewards, event.level,
             )
 
             GameEvent.Restart -> lastRequest?.let { cfg ->
                 newGame(
                     cfg.mode, cfg.spec, cfg.difficulty, cfg.seed,
-                    cfg.maxMistakes, cfg.maxHints, cfg.rewards,
+                    cfg.maxMistakes, cfg.maxHints, cfg.rewards, cfg.level,
                 )
             }
             GameEvent.RetrySamePuzzle -> retrySamePuzzle()
@@ -117,6 +117,7 @@ class GameViewModel(
         maxMistakes: Int,
         maxHints: Int,
         rewards: RewardsSection,
+        level: Int? = null,
     ) {
         if (_uiState.value.progress.isBusy) return
         val config = GameConfig(
@@ -127,6 +128,7 @@ class GameViewModel(
             maxMistakes = maxMistakes,
             maxHints = maxHints,
             rewards = rewards,
+            level = level,
         )
         lastRequest = config
         _uiState.update { GameReducer.setBusy(GameReducer.setGameConfig(it, config), true) }

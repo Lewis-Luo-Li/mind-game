@@ -119,7 +119,7 @@ internal fun HomeScreen(
                 val selectedSpec = effectiveSpec
                 val finalDifficulty = when (mode) {
                     GameMode.DAILY -> availableDiff.maxByOrNull { it.ordinal }
-                    GameMode.FREE -> difficulty.takeIf { it in availableDiff } ?: effectiveDifficulty
+                    GameMode.FREE, GameMode.LADDER -> difficulty.takeIf { it in availableDiff } ?: effectiveDifficulty
                 }
                 if (selectedSpec != null && finalDifficulty != null) {
                     val seed = if (mode == GameMode.DAILY) {

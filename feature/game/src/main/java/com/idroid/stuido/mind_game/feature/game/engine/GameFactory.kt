@@ -41,6 +41,7 @@ class GameFactory(
 
         val effectiveSeed = when (mode) {
             GameMode.DAILY -> seed ?: throw IllegalArgumentException("Daily challenge requires today's seed")
+            GameMode.LADDER -> seed ?: throw IllegalArgumentException("Ladder level requires its seed")
             GameMode.FREE -> seed // 自由模式可带或不带种子（带则一致性，不带则随机）
         }
 

@@ -59,6 +59,16 @@ class GameFactoryTest {
     }
 
     @Test
+    fun `天梯模式必须提供 seed 且同种子可复现`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            factory.newGame(GameMode.LADDER, BoardSpec.MINI, Difficulty.EASY)
+        }
+        val a = factory.newGame(GameMode.LADDER, BoardSpec.MINI, Difficulty.EASY, seed = 99L)
+        val b = factory.newGame(GameMode.LADDER, BoardSpec.MINI, Difficulty.EASY, seed = 99L)
+        assertEquals(a.values, b.values)
+    }
+
+    @Test
     fun `不支持的难度组合抛异常 - 4x4 EXPERT`() {
         assertThrows(IllegalArgumentException::class.java) {
             factory.newGame(GameMode.FREE, BoardSpec.MINI, Difficulty.EXPERT)

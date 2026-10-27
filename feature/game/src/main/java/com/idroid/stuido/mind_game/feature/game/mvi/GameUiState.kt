@@ -76,6 +76,8 @@ data class GameConfig(
     val maxMistakes: Int = 3,
     val maxHints: Int = 3,
     val rewards: RewardsSection = RewardsSection(),
+    /** 天梯关卡号（仅 [GameMode.LADDER]），用于顶栏标题。 */
+    val level: Int? = null,
 ) {
     val size: Int get() = spec.size
 }

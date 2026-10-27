@@ -4,6 +4,7 @@ import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
 import com.idroid.stuido.mind_game.core.logic.config.Difficulty
 import com.idroid.stuido.mind_game.core.logic.config.GameRules
 import com.idroid.stuido.mind_game.feature.game.GameMode
+import java.time.LocalDate
 
 /**
  * 一次"开始游玩"的完整请求，由主菜单产出、交由 GameRoute 开局。
@@ -16,4 +17,8 @@ data class PlayRequest(
     val difficulty: Difficulty,
     val seed: Long?,
     val rules: GameRules,
+    /** 每日挑战所属期（开局时确定；跨过换题时刻再解出仍记入这一期）。 */
+    val puzzleDay: LocalDate? = null,
+    /** 天梯关卡号。 */
+    val level: Int? = null,
 )

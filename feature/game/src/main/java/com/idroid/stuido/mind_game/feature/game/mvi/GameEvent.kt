@@ -26,6 +26,8 @@ sealed interface GameEvent {
         val maxMistakes: Int = 3,
         val maxHints: Int = 3,
         val rewards: RewardsSection = RewardsSection(),
+        /** 天梯关卡号（仅 [GameMode.LADDER]）。 */
+        val level: Int? = null,
     ) : GameEvent
 
     /** 重新开始当前对局（同参数再开一局）。 */
