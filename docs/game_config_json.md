@@ -36,7 +36,22 @@ The JSON never holds puzzle numbers. It only holds the settings that control gen
 
     "daily": {
       "enabled": true,
-      "seed_salt": 0
+      "seed_salt": 0,
+      "timezone": "Australia/Sydney",
+      "reset_time": "17:00",
+      "spec": "classic",
+      "difficulty": "hard"
+    },
+
+    "ladder": {
+      "enabled": true,
+      "seed_salt": 0,
+      "spec": "classic",
+      "cycle": ["easy", "medium", "hard", "expert"],
+      "levels_per_tier": 5,
+      "shuffle_from_round": 2,
+      "max_consecutive_expert": 2,
+      "holes_step_per_round": 0
     }
   },
 
@@ -65,6 +80,10 @@ Field notes:
 - **`rewards`:** what "watch an ad" grants once lives or hints run out. `max_per_game` stops endless revives. `allow_in_daily` keeps Daily fair if you ever add rankings.
 - **`ads.enabled`:** a master switch for AdMob. With rewards on and ads off, a fake controller grants the reward straight away (no network). The interstitial has its own `enabled` plus a frequency gate (`min_games_between`, `min_seconds_between`).
 - **`daily.seed_salt`:** mixed into the date-based seed (`epochDay`). Changing it remotely produces a fresh set of daily puzzles. It replaces the unused fixed `dailySeed`.
+- **`daily.timezone` / `daily.reset_time`:** the daily puzzle changes at `reset_time` (`HH:mm`, local wall-clock) in `timezone` (IANA id), for every player at the same instant whatever their device timezone. `DailySchedule` (`:core:logic` `mode/`) resolves each day's local `reset_time` to an instant, so the reset stays at 17:00 on DST change days. A `reset_time` inside a repeated DST hour uses its first occurrence; one inside a skipped hour moves to just after the gap. The puzzle day is the date the window opened (before 17:00 it is still the previous day). Invalid values fall back to `Australia/Sydney` / `17:00`.
+- **`daily.spec` / `daily.difficulty`:** fixed board and difficulty for the daily. Must exist in `generator.holes`, otherwise both fall back to `classic` / `hard`, or to the largest board's hardest difficulty if that is missing too. Ladder `spec` falls back the same way.
+- **`ladder`:** Level N mode, planned by `LadderPlan`. A round is every `cycle` difficulty × `levels_per_tier` (default 4 × 5 = 20 levels). Rounds before `shuffle_from_round` run in `cycle` order. Later rounds are shuffled deterministically from the round number, so every player gets the same order. They never start or end on Expert and have at most `max_consecutive_expert` Experts in a row; if the cycle makes that impossible, the round stays in order. `holes_step_per_round` adds holes per extra round (capped at the minimum clues). Each level gets its own 64-bit tagged seed (+ `seed_salt`), which never collides with daily seeds. Invalid fields fall back to their defaults one at a time, and `cycle` keeps only difficulties available for `spec`.
+- **Seeded randomness:** seeded games use the built-in `SplitMix64`, not `kotlin.random.Random(seed)`, whose seeded algorithm is not guaranteed stable across Kotlin versions. The same seed gives the same puzzle on every device and app version.
 - **`features`:** feature flags. Ship code hidden behind a flag and switch it on remotely, for example for Crossword or a staged rollout.
 - **`schema_version`:** bumped only on breaking changes. The app ignores a config whose `schema_version` is newer than it understands and keeps using the previous one. **`config_version`:** lets you track which settings a player had (logs/analytics).
 
