@@ -17,6 +17,9 @@ data class IconSet(
     val hint: ImageVector,
     val timer: ImageVector,
     val error: ImageVector,
+    val daily: ImageVector,
+    val ladder: ImageVector,
+    val done: ImageVector,
 )
 
 @Composable
@@ -30,6 +33,9 @@ fun rememberDefaultIconSet(): IconSet {
         hint = ImageVector.vectorResource(R.drawable.ic_hint),
         timer = ImageVector.vectorResource(R.drawable.ic_timer),
         error = ImageVector.vectorResource(R.drawable.ic_error),
+        daily = ImageVector.vectorResource(R.drawable.ic_calendar),
+        ladder = ImageVector.vectorResource(R.drawable.ic_stairs),
+        done = ImageVector.vectorResource(R.drawable.ic_check_circle),
     )
 }
 
