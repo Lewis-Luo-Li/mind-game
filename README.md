@@ -2,8 +2,8 @@
 
 An Android puzzle-game app built with Kotlin and Jetpack Compose. The first (and currently only) playable game is **Sudoku** in three sizes — 4×4, 6×6 and 9×9 — with every puzzle generated on-device: no bundled puzzle files, and each puzzle is checked to have exactly one solution.
 
-- **Free mode**: pick a board size and difficulty; each game is a new random puzzle.
-- **Daily mode**: a puzzle seeded from today's date, so everyone gets the same board for a given day and size.
+- **Daily Challenge**: one shared 9×9 Hard puzzle for everyone, refreshing at 5pm Sydney time; solve it once per day.
+- **Level N**: solve to unlock the next level; 20-level rounds contain five each of Easy, Medium, Hard and Expert (round 1 is ordered, later rounds are shuffled).
 - **In-game tools**: undo, pencil notes, erase, limited hints, debug-only solution reveal, pause (tap the timer), timer and configurable lives.
 - **Theming**: System / Light / Dark mode and four accent palettes (Lilac, Ocean, Forest, Sunset), applied live.
 
@@ -70,11 +70,14 @@ Plugins: `mindgame.android.application`, `mindgame.android.application.compose`
 | `sudoku/MindGameApp` | Lightweight in-app navigation: a saveable back stack of `Dest` (`Games`, `GameDetail`, `Settings`) plus a `PlayRequest` that shows the game screen on top. System back pops the stack via `BackHandler`. |
 | `mainpage/MainScreen`, `GameCard` | Games list (`LazyColumn`) built from `gameCatalog`. |
 | `main/model/GameEntry` | `GameEntry` / `GameId` (`SUDOKU`, `CROSSWORD`, `ZOODUKU`) and the `gameCatalog` (currently Sudoku only). |
-| `sudoku/HomeScreen` | Sudoku start screen: choose mode (Free / Daily), board size and difficulty, then start; link to Settings. Daily mode uses the hardest difficulty available for the size and `LocalDate.now().toEpochDay()` as the seed. |
+| `sudoku/HomeScreen` | Two mode cards (`ModeCard`): Daily Challenge with reset countdown, Level N with round progress (`CycleProgressDots`); plus a Settings link. |
+| `sudoku/HomeUiState` | Pure Daily / Ladder card state derived from config, saved progress and the clock; unit-tested. |
+| `sudoku/PlayerProgressStore` | SharedPreferences-backed solved-day and highest unlocked ladder level; only solved games advance progress. |
+| `sudoku/PlayRequests` | Builds deterministic Daily and Ladder `PlayRequest`s from the current day or level. |
 | `sudoku/SettingsScreen` | Appearance settings: brightness mode and accent palette. |
 | `sudoku/ThemePrefs` | `SharedPreferences`-backed theme store exposed as Compose state. |
 | `sudoku/ComingSoonScreen` | Placeholder for games without gameplay yet (Crossword, Zooduku). |
-| `sudoku/PlayRequest` | Parameters for one game session (mode, spec, difficulty, seed, unique id). |
+| `sudoku/PlayRequest` | One game-session request (mode, spec, difficulty, seed, rules, unique id), with `puzzleDay`, ladder `level` and optional `holes` override. |
 
 ### `:core:logic` — Sudoku engine (pure Kotlin/JVM)
 Plugin: `mindgame.kotlin.library`. Full documentation: [`core/logic/docs/README.md`](core/logic/docs/README.md).
@@ -110,7 +113,7 @@ Plugins: `mindgame.android.library`, `mindgame.android.library.compose`
 | `engine` | `GameFactory`, `GameSeed`, `HintProvider`, `InputValidator` | Adapts `:core:logic` for the UI: `GameFactory` turns (mode, spec, difficulty, seed) into a `GameSeed` (values, solution, givens); `HintProvider` gives hints and checks answers against the solution; `InputValidator` detects conflicts and completion. |
 | `ui` | `GameScreenRoute`, `GameScreen`, `GameTopBar`, `GameBoard`, `CellView`, `GameToolBar`, `NumberPad`, `BoardGeometry` | `GameScreenRoute` creates one `GameViewModel` per session (`sessionKey`), dispatches `NewGame`, and collects one-shot effects into snackbars; `GameScreen` renders `GameUiState`. |
 | `ui/components` | `PauseScrim`, `FinishPanel` | Pause overlay (resume or exit) and outcome panel (retry, new game, or exit). |
-| root | `GameMode` (`FREE`, `DAILY`), `GameStatus` (`IDLE`, `RUNNING`, `PAUSED`, `FINISHED`), `GameOutcome` (`SOLVED`, `FAILED`, `REVEALED`) | Shared enums. |
+| root | `GameMode` (`DAILY`, `LADDER`, `FREE` until Phase 4), `GameStatus` (`IDLE`, `RUNNING`, `PAUSED`, `FINISHED`), `GameOutcome` (`SOLVED`, `FAILED`, `REVEALED`) | Shared enums. |
 
 ### `:core:ui` — design system
 Plugins: `mindgame.android.library`, `mindgame.android.library.compose`
@@ -119,7 +122,7 @@ Plugins: `mindgame.android.library`, `mindgame.android.library.compose`
 |---|---|
 | `theme` | `MindgameTheme(scheme, mode)`, `AppThemeMode` (System / Light / Dark), `AppThemeScheme` (Lilac / Ocean / Forest / Sunset), `Theme` accessors. |
 | `primitives` | Color schemes per palette (`schemeFor`), typography, font sizes, font family (Klee One, bundled under OFL — see `docs/OFL.txt`). |
-| `components` | `BaseText` and `TextConfig`. |
+| `components` | `BaseText` and `TextConfig`; `ModeCard` for flat, slot-based mode cards; `CycleProgressDots` for wrapped round progress. |
 | `util` | `VisibilityConfig`. |
 
 ### `buildSrc` — convention plugins
@@ -147,9 +150,9 @@ sequenceDiagram
     participant Gen as SudokuGenerator (:core:logic)
     participant Solver as BacktrackingSolver
 
-    Player->>Home: choose mode, size, difficulty, tap Start
-    Home->>App: onStart(mode, spec, difficulty, seed)
-    App->>Route: PlayRequest -> GameScreenRoute(sessionKey)
+    Player->>Home: tap Daily Challenge / Level N
+    Home->>App: onPlayDaily() / onPlayLevel(N)
+    App->>Route: dailyPlayRequest / ladderPlayRequest -> GameScreenRoute(sessionKey)
     Route->>VM: dispatch(NewGame)
     VM->>VM: isBusy = true (spinner)
     VM->>Factory: newGame(...) on Dispatchers.Default
@@ -214,18 +217,19 @@ stateDiagram-v2
 ```mermaid
 flowchart TD
     Launch(["App launch<br/>MainActivity"]) --> Games["Games list<br/>MainScreen"]
-    Games -- "tap Sudoku card" --> Home["Sudoku home<br/>HomeScreen<br/>mode · size · difficulty"]
+    Games -- "tap Sudoku card" --> Home["Sudoku home<br/>Daily Challenge · Level N"]
     Games -.->|"Crossword / Zooduku<br/>(not in catalog yet)"| Soon["ComingSoonScreen"]
     Soon -- "Back" --> Games
     Home -- "Theme & Settings" --> Settings["SettingsScreen<br/>mode · accent color"]
     Settings -- "Back" --> Home
     Home -- "system back" --> Games
-    Home -- "Start Free / Start Daily" --> Game["GameScreen<br/>top bar · board · toolbar · number pad"]
+    Home -- "Play Daily / Play Level" --> Game["GameScreen<br/>top bar · board · toolbar · number pad"]
     Game -- "Pause" --> Pause["PauseScrim"]
     Pause -- "Resume" --> Game
     Pause -- "Exit" --> Home
     Game -- "win / 3 mistakes" --> Finish["FinishPanel<br/>Victory or Failed"]
     Finish -- "Play again" --> Game
+    Finish -- "Next level" --> Game
     Finish -- "Exit" --> Home
     Game -- "Exit (top bar)" --> Home
 ```

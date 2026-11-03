@@ -22,12 +22,9 @@ import com.idroid.stuido.mind_game.ads.AdMobInterstitialController
 import com.idroid.stuido.mind_game.ads.AdMobRewardedAdController
 import com.idroid.stuido.mind_game.ads.adMobBannerSlot
 import com.idroid.stuido.mind_game.config.GameConfigRepository
-import com.idroid.stuido.mind_game.core.logic.config.BoardSpec
-import com.idroid.stuido.mind_game.core.logic.config.Difficulty
 import com.idroid.stuido.mind_game.core.logic.config.DifficultyConfig
 import com.idroid.stuido.mind_game.core.logic.config.GameRemoteConfig
 import com.idroid.stuido.mind_game.core.logic.mode.DailySchedule
-import com.idroid.stuido.mind_game.feature.game.GameMode
 import com.idroid.stuido.mind_game.feature.game.GameOutcome
 import com.idroid.stuido.mind_game.feature.game.ads.FakeRewardedAdController
 import com.idroid.stuido.mind_game.feature.game.ads.InterstitialController
@@ -187,19 +184,14 @@ fun MindGameApp(themePrefs: ThemePrefs) {
             is Dest.GameDetail -> GameHost(
                 game = dest.game,
                 gameConfig = gameConfig,
+                progressStore = progressStore,
                 onBack = ::pop,
                 onOpenSettings = { navigate(Dest.Settings) },
-                onStart = { mode, spec, difficulty, seed ->
-                    playRequest = if (mode == GameMode.DAILY) {
-                        dailyPlayRequest(nextSessionId(), gameConfig, Instant.now())
-                    } else PlayRequest(
-                        id = nextSessionId(),
-                        mode = mode,
-                        spec = spec,
-                        difficulty = difficulty,
-                        seed = seed,
-                        rules = gameConfig.rulesFor(mode.name.lowercase(), spec, difficulty),
-                    )
+                onPlayDaily = {
+                    playRequest = dailyPlayRequest(nextSessionId(), gameConfig, Instant.now())
+                },
+                onPlayLevel = { level ->
+                    playRequest = ladderPlayRequest(nextSessionId(), gameConfig, level)
                 },
             )
         }
@@ -207,22 +199,26 @@ fun MindGameApp(themePrefs: ThemePrefs) {
 }
 
 /**
- * 单个游戏的宿主：Sudoku 复用既有 [HomeScreen] 作为开局入口；
+ * 单个游戏的宿主：Sudoku 以 [HomeRoute] 作为开局入口；
  * Crossword / Zooduku 尚无玩法，显示占位屏（带返回）。
  */
 @Composable
 private fun GameHost(
     game: GameId,
     gameConfig: GameRemoteConfig,
+    progressStore: PlayerProgressStore,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
-    onStart: (GameMode, BoardSpec, Difficulty, Long?) -> Unit,
+    onPlayDaily: () -> Unit,
+    onPlayLevel: (level: Int) -> Unit,
 ) {
     when (game) {
-        GameId.SUDOKU -> HomeScreen(
+        GameId.SUDOKU -> HomeRoute(
             gameConfig = gameConfig,
+            progressStore = progressStore,
+            onPlayDaily = onPlayDaily,
+            onPlayLevel = onPlayLevel,
             onOpenSettings = onOpenSettings,
-            onStart = onStart,
         )
 
         GameId.CROSSWORD, GameId.ZOODUKU -> ComingSoonScreen(
