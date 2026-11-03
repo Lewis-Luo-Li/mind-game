@@ -4,18 +4,17 @@
 
     <!-- Home 主菜单 -->
     <string name="home_title">Mind Game</string>
-    <string name="home_subtitle">Pick a mode and a board size to start a new game.</string>
-    <string name="section_mode">Mode</string>
-    <string name="home_free">Free</string>
-    <string name="home_daily">Daily</string>
-    <string name="section_board_size">Board Size</string>
-    <string name="board_x4">4×4</string>
-    <string name="board_x6">6×6</string>
-    <string name="board_x9">9×9</string>
-    <string name="section_difficulty">Difficulty</string>
-    <string name="home_daily_note">Daily is 9×9 %1$s: a new puzzle every day at 5pm Sydney time.</string>
-    <string name="button_start_daily">Start Daily</string>
-    <string name="button_start_free">Start Free</string>
+    <string name="home_subtitle">Solve today\'s challenge or climb the ladder.</string>
+    <string name="home_daily_title">Daily Challenge</string>
+    <string name="home_daily_subtitle">%1$d×%1$d · %2$s · new puzzle at 5pm Sydney time</string>
+    <string name="home_daily_ends_in">Ends in %1$s</string>
+    <string name="home_daily_solved">Solved · next puzzle in %1$s</string>
+    <string name="home_level_title">Level %1$d</string>
+    <string name="home_level_subtitle">%1$s · Round %2$d</string>
+    <string name="home_level_progress">%1$d of %2$d in this round</string>
+    <string name="home_level_progress_desc">%1$d of %2$d levels cleared this round</string>
+    <string name="home_play">Play</string>
+    <string name="home_play_again">Play again</string>
     <string name="home_settings">Theme &amp; Settings</string>
 
     <!-- 游戏列表 -->
