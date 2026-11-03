@@ -22,6 +22,7 @@ class HomeScreenTest {
 
     private val daily = DailyCardState(
         difficulty = Difficulty.HARD,
+        boardSize = 9,
         puzzleDay = LocalDate.of(2026, 10, 25),
         solved = false,
         untilReset = Duration.ofSeconds(3 * 3600 + 12 * 60 + 45),

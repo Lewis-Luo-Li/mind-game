@@ -115,7 +115,11 @@ private fun DailyCard(
         uiContent = ModeCardUiContent(
             icon = if (daily.solved) Theme.icons.done else Theme.icons.daily,
             title = stringResource(R.string.home_daily_title),
-            subtitle = stringResource(R.string.home_daily_subtitle, daily.difficulty.label()),
+            subtitle = stringResource(
+                R.string.home_daily_subtitle,
+                daily.boardSize,
+                daily.difficulty.label(),
+            ),
         ),
         uiConfig = ModeCardConfig(),
         uiStyle = style.copy(iconTint = if (daily.solved) colors.tertiary else colors.primary),
@@ -228,6 +232,7 @@ private fun homeButtonStyle() = ButtonStyle(
 
 private val previewDailyOpen = DailyCardState(
     difficulty = Difficulty.HARD,
+    boardSize = 9,
     puzzleDay = LocalDate.of(2026, 10, 25),
     solved = false,
     untilReset = Duration.ofSeconds(3 * 3600 + 12 * 60 + 45),

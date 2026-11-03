@@ -16,6 +16,7 @@ internal data class HomeUiState(
 
 internal data class DailyCardState(
     val difficulty: Difficulty,
+    val boardSize: Int,
     val puzzleDay: LocalDate,
     val solved: Boolean,
     val untilReset: Duration,
@@ -41,6 +42,7 @@ internal fun homeUiState(
         val day = schedule.puzzleDay(now)
         DailyCardState(
             difficulty = dailySection.difficultyLevel(),
+            boardSize = dailySection.boardSpec().size,
             puzzleDay = day,
             solved = dailySolvedDay == day,
             untilReset = Duration.between(now, schedule.nextResetAt(now)),

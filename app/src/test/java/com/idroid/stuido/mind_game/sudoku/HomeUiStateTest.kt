@@ -26,8 +26,22 @@ class HomeUiStateTest {
         val daily = homeUiState(config, 1, null, beforeReset).daily!!
         assertEquals(LocalDate.of(2026, 10, 24), daily.puzzleDay)
         assertEquals(Difficulty.HARD, daily.difficulty)
+        assertEquals(9, daily.boardSize)
         assertEquals(Duration.ofHours(1), daily.untilReset)
         assertFalse(daily.solved)
+    }
+
+    @Test
+    fun `daily card uses the configured board size`() {
+        val mediumConfig = config.copy(
+            sudoku = config.sudoku.copy(
+                daily = config.sudoku.daily.copy(spec = "medium"),
+            ),
+        )
+
+        val daily = homeUiState(mediumConfig, 1, null, beforeReset).daily!!
+
+        assertEquals(6, daily.boardSize)
     }
 
     @Test

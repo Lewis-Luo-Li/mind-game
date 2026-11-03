@@ -6,7 +6,7 @@
     <string name="home_title">Mind Game</string>
     <string name="home_subtitle">Solve today\'s challenge or climb the ladder.</string>
     <string name="home_daily_title">Daily Challenge</string>
-    <string name="home_daily_subtitle">9×9 · %1$s · new puzzle at 5pm Sydney time</string>
+    <string name="home_daily_subtitle">%1$d×%1$d · %2$s · new puzzle at 5pm Sydney time</string>
     <string name="home_daily_ends_in">Ends in %1$s</string>
     <string name="home_daily_solved">Solved · next puzzle in %1$s</string>
     <string name="home_level_title">Level %1$d</string>
