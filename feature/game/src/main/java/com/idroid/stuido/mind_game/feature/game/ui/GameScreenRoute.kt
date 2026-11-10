@@ -18,6 +18,7 @@ import com.idroid.stuido.mind_game.core.logic.config.RewardsSection
 import com.idroid.stuido.mind_game.core.logic.generator.SudokuGenerator
 import com.idroid.stuido.mind_game.feature.game.GameMode
 import com.idroid.stuido.mind_game.feature.game.GameOutcome
+import com.idroid.stuido.mind_game.feature.game.GameStatus
 import com.idroid.stuido.mind_game.feature.game.R
 import com.idroid.stuido.mind_game.feature.game.ads.BannerAdSlot
 import com.idroid.stuido.mind_game.feature.game.ads.FakeRewardedAdController
@@ -25,8 +26,10 @@ import com.idroid.stuido.mind_game.feature.game.ads.RewardKind
 import com.idroid.stuido.mind_game.feature.game.ads.RewardedAdController
 import com.idroid.stuido.mind_game.feature.game.mvi.GameEffect
 import com.idroid.stuido.mind_game.feature.game.mvi.GameEvent
+import com.idroid.stuido.mind_game.feature.game.mvi.GameUiState
 import com.idroid.stuido.mind_game.feature.game.mvi.GameViewModel
 import com.idroid.stuido.mind_game.feature.game.engine.GameFactory
+import com.idroid.stuido.mind_game.feature.game.persistence.shouldPersist
 import kotlinx.coroutines.delay
 import java.time.Instant
 import kotlinx.coroutines.launch
@@ -45,7 +48,7 @@ private const val FINISH_CALLBACK_DELAY_MS = 1_200L
  * @param rewardedAds 激励广告控制器；ads.enabled=false 时宿主传
  *                    [FakeRewardedAdController]（点按直接发奖）。
  * @param bannerAd   底部横幅插槽；null = 广告关闭，不预留高度。
- * @param onGameFinished 每次对局到达终局态（SOLVED/REVEALED/FAILED）回调给宿主，
+ * @param onGameFinished 每次对局到达终局态（SOLVED/FAILED）回调给宿主，
  *                       用于插页广告频控与展示。[firstFinish] 标记同一局实例
  *                       首次到达终局（激励复活后再次终局时为 false）——频控局数
  *                       只在首次时计入，避免一局复活多次被算作多局。
@@ -65,12 +68,15 @@ fun GameScreenRoute(
     rewardedAds: RewardedAdController = FakeRewardedAdController(),
     bannerAd: BannerAdSlot? = null,
     onGameFinished: (outcome: GameOutcome, firstFinish: Boolean) -> Unit = { _, _ -> },
-    showDebugSolve: Boolean = false,
     sessionKey: String = "default-session",
     level: Int? = null,
     onNextLevel: (() -> Unit)? = null,
     nextDailyAt: Instant? = null,
     onOutcome: (outcome: GameOutcome) -> Unit = {},
+    /** 上次未完成的对局存档；非 null 时以恢复代替开局（仅在该 VM 尚未开局时生效）。 */
+    restore: GameUiState? = null,
+    /** 状态变化时的落盘回调。本模块不接触 Context，存储由宿主决定。 */
+    onPersist: (GameUiState) -> Unit = {},
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -94,9 +100,29 @@ fun GameScreenRoute(
         return true
     }
 
-    // 首次进入（本会话挂载）自动开局（生成 + 铺盘）；后续由 Restart / FinishPanel 驱动。
+    // 首次进入（本会话挂载）自动开局；后续由 Restart / FinishPanel 驱动。
+    //
+    // 必须判 IDLE：屏幕旋转会重建组合（LaunchedEffect(vm) 重新执行），而 ViewModel
+    // 存活且状态已是 RUNNING/PAUSED/FINISHED —— 无条件开局会把玩家进度重新洗掉。
     LaunchedEffect(vm) {
-        vm.dispatch(GameEvent.NewGame(mode, spec, difficulty, seed, maxMistakes, maxHints, rewards, level))
+        if (vm.uiState.value.progress.status != GameStatus.IDLE) return@LaunchedEffect
+        val saved = restore
+        if (saved != null) {
+            vm.dispatch(GameEvent.RestoreGame(saved))
+        } else {
+            vm.dispatch(GameEvent.NewGame(mode, spec, difficulty, seed, maxMistakes, maxHints, rewards, level))
+        }
+    }
+
+    // 落盘：非计时变化立刻写，纯计时变化每 TIMER_SAVE_INTERVAL_SECONDS 补一次。
+    LaunchedEffect(vm) {
+        var lastSaved: GameUiState? = null
+        vm.uiState.collect { state ->
+            if (shouldPersist(lastSaved, state)) {
+                lastSaved = state
+                onPersist(state)
+            }
+        }
     }
 
     LaunchedEffect(vm) {
@@ -115,16 +141,10 @@ fun GameScreenRoute(
                     delay(FINISH_CALLBACK_DELAY_MS)
                     onGameFinished(GameOutcome.SOLVED, firstFinishOfInstance(effect.gameInstance))
                 }
-                is GameEffect.SolutionRevealed -> {
-                    onOutcome(GameOutcome.REVEALED)
-                    delay(FINISH_CALLBACK_DELAY_MS)
-                    onGameFinished(GameOutcome.REVEALED, firstFinishOfInstance(effect.gameInstance))
-                }
                 is GameEffect.GameOver -> {
                     onOutcome(GameOutcome.FAILED)
                     onGameFinished(GameOutcome.FAILED, firstFinishOfInstance(effect.gameInstance))
                 }
-                else -> Unit
             }
         }
     }
@@ -142,7 +162,6 @@ fun GameScreenRoute(
         onExit = onExit,
         onOpenSettings = onOpenSettings,
         snackbarHostState = snackbarHostState,
-        showDebugSolve = showDebugSolve,
         onHintAd = {
             rewardedAds.show(
                 context = context,

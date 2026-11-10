@@ -4,5 +4,4 @@ package com.idroid.stuido.mind_game.feature.game
 enum class GameOutcome {
     SOLVED,
     FAILED,
-    REVEALED,
 }

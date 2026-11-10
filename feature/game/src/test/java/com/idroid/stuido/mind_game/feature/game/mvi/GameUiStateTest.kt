@@ -78,7 +78,7 @@ class GameUiStateTest {
             progress = GameProgress(
                 mistakes = 1,
                 hintsUsed = 2,
-                outcome = GameOutcome.REVEALED,
+                outcome = GameOutcome.SOLVED,
             ),
         )
         assertEquals(0, state.hintsLeft)

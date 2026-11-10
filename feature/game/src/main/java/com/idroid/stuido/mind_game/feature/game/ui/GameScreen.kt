@@ -17,19 +17,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -112,7 +107,6 @@ fun GameScreen(
     onExit: () -> Unit,
     onOpenSettings: (() -> Unit)? = null,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-    showDebugSolve: Boolean = false,
     /** 提示用尽且可领广告奖励时非 null：点击 Hint 改为发起激励广告。 */
     onHintAd: (() -> Unit)? = null,
     /** 出局面板可领命数奖励时非 null：展示“看广告 +N 命”主按钮。 */
@@ -131,7 +125,6 @@ fun GameScreen(
     val status = state.progress.status
     val finished = status == GameStatus.FINISHED
     val paused = status == GameStatus.PAUSED
-    var showSolveDialog by remember { mutableStateOf(false) }
 
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { inner ->
@@ -338,7 +331,6 @@ fun GameScreen(
                             } else {
                                 stringResource(R.string.tool_hint)
                             },
-                            showDebugSolve = showDebugSolve,
                             onUndo = { dispatch(GameEvent.Undo) },
                             onNoteMode = { dispatch(GameEvent.ToggleNoteMode) },
                             onErase = { dispatch(GameEvent.Erase) },
@@ -349,7 +341,6 @@ fun GameScreen(
                                     onHintAd?.invoke()
                                 }
                             },
-                            onSolve = { showSolveDialog = true },
                         )
                         // 笔记模式下，选中格已有的候选数字即使剩余 0 也保持可点，便于再次点按移除。
                         val noteDigitsAtSelection = if (
@@ -439,28 +430,6 @@ fun GameScreen(
                 )
             }
         }
-    }
-    if (showSolveDialog) {
-        AlertDialog(
-            onDismissRequest = { showSolveDialog = false },
-            title = { Text(stringResource(R.string.solve_dialog_title)) },
-            text = { Text(stringResource(R.string.solve_dialog_body)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showSolveDialog = false
-                        dispatch(GameEvent.RequestSolve)
-                    },
-                ) {
-                    Text(stringResource(R.string.action_reveal))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showSolveDialog = false }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
     }
 }
 
@@ -573,15 +542,6 @@ private fun failedMiniState() = runningMiniState().copy(
     ),
 )
 
-private fun revealedMiniState() = runningMiniState().copy(
-    progress = GameProgress(
-        status = GameStatus.FINISHED,
-        mistakes = 1,
-        timerSeconds = 78,
-        outcome = GameOutcome.REVEALED,
-    ),
-)
-
 @Preview(showBackground = true, name = "Game · Running (4x4)", widthDp = 420)
 @Composable
 private fun GamePreviewRunning() {
@@ -610,12 +570,6 @@ private fun GamePreviewVictory() {
 @Composable
 private fun GamePreviewFailed() {
     gamePreview(failedMiniState())
-}
-
-@Preview(showBackground = true, name = "Game · Revealed (4x4)", widthDp = 420)
-@Composable
-private fun GamePreviewRevealed() {
-    gamePreview(revealedMiniState())
 }
 
 // ---------------------------------------------------------------------

@@ -23,7 +23,4 @@ sealed interface GameEffect {
 
     /** 误触错误达上限而失败结束。 */
     data class GameOver(val gameInstance: Int) : GameEffect
-
-    /** The solution was revealed instead of solving the puzzle. */
-    data class SolutionRevealed(val gameInstance: Int) : GameEffect
 }

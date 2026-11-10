@@ -2,16 +2,18 @@ package com.idroid.stuido.mind_game.feature.game.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -82,37 +84,69 @@ fun CellView(
     }
 }
 
+/**
+ * 格内候选数字的排布模板：[cols] 列 × [rows] 行，数字 d 固定落在
+ * 第 `(d-1)/cols` 行、第 `(d-1)%cols` 列（即 1 左上、最大值右下）。
+ * 位置固定是关键：候选位随数字移动会让人无法扫视比较。
+ */
+internal data class NoteGrid(val cols: Int, val rows: Int) {
+
+    /** 该数字落在第几行（0-based）。 */
+    fun rowOf(digit: Int): Int = (digit - 1) / cols
+
+    /** 该数字落在第几列（0-based）。 */
+    fun colOf(digit: Int): Int = (digit - 1) % cols
+
+    /** 该格子（= 该行该列组成的格）能容纳的槽位数上限。 */
+    val capacity: Int get() = cols * rows
+}
+
+/** 候选数字最多排到 9x9 的 9 个，列数取规格平方根向上取整，封顶 3 列。 */
+internal const val MAX_NOTE_DIGITS = 9
+
+/** 列数上限：9x9 时正好 3x3。 */
+internal const val MAX_NOTE_COLS = 3
+
+/** 按盘面规格算出候选数字的排布：4x4→2x2，6x6→3x2，9x9→3x3。 */
+internal fun noteGridFor(maxDigit: Int): NoteGrid {
+    val cols = ceil(sqrt(maxDigit.toDouble())).toInt().coerceIn(1, MAX_NOTE_COLS)
+    val cap = maxDigit.coerceAtMost(MAX_NOTE_DIGITS)
+    val rows = ceil(cap.toDouble() / cols).toInt().coerceAtLeast(1)
+    return NoteGrid(cols = cols, rows = rows)
+}
+
 @Composable
 private fun NotesGrid(notes: Set<Int>, maxDigit: Int, noteFontSize: TextUnit = noteFontSize(maxDigit)) {
-    val cols = ceil(sqrt(maxDigit.toDouble())).toInt().coerceIn(1, 3)
-    val cap = maxDigit.coerceAtMost(9)
-    val maxRows = ceil(cap.toDouble() / cols).toInt().coerceAtLeast(1)
     val noteColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val fontSize = noteFontSize
+    val grid = remember(maxDigit) { noteGridFor(maxDigit) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(3.dp),
-        verticalArrangement = Arrangement.SpaceEvenly,
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .padding(2.dp),
     ) {
-        repeat(maxRows) { r ->
+        repeat(grid.rows) { r ->
+            // 行必须按权重分高、宽占满；否则 Row 内首个 fillMaxSize 子项会独吞整行宽度，
+            // 其余候选列被压成 0 宽而完全不显示。
             Row(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                repeat(cols) { c ->
-                    val digit = r * cols + c + 1
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                repeat(grid.cols) { c ->
+                    val digit = r * grid.cols + c + 1
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         if (digit in notes) {
                             Text(
                                 text = digit.toString(),
                                 color = noteColor,
-                                fontSize = fontSize,
+                                fontSize = noteFontSize,
                                 textAlign = TextAlign.Center,
                             )
                         }

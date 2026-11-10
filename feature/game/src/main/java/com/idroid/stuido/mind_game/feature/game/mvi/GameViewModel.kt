@@ -77,6 +77,7 @@ class GameViewModel(
             }
             GameEvent.RetrySamePuzzle -> retrySamePuzzle()
             GameEvent.Exit -> Unit // 退出由宿主（onExit）完成，不在此处理
+            is GameEvent.RestoreGame -> restoreGame(event.state)
 
             is GameEvent.SelectCell -> ifRunning {
                 _uiState.update { GameReducer.selectCell(it, event.index) }
@@ -101,7 +102,6 @@ class GameViewModel(
                 _uiState.update { GameReducer.grantRewardedLives(it, event.amount) }
             }
             GameEvent.RequestCheck -> ifRunning { requestCheck() }
-            GameEvent.RequestSolve -> ifRunning { solve() }
 
             is GameEvent.Tick -> tick(event.elapsedSeconds)
             GameEvent.TogglePause -> onTogglePause()
@@ -153,6 +153,38 @@ class GameViewModel(
                 return@launch
             }
             applySeed(result)
+        }
+    }
+
+    /**
+     * 从存档恢复一局：直接铺入状态，不再生成谜题。
+     *
+     * 守卫条件保证幂等：只有当本 VM 还没开过局时才应用存档。屏幕旋转后 VM 存活、
+     * 状态已是 RUNNING/PAUSED，此时重复派发会被忽略，玩家进度不会被旧存档覆盖。
+     */
+    private fun restoreGame(saved: GameUiState) {
+        if (_uiState.value.progress.status != GameStatus.IDLE) return
+        val restoredStatus = saved.progress.status
+        if (restoredStatus != GameStatus.RUNNING && restoredStatus != GameStatus.PAUSED) return
+        if (saved.board.size <= 0) return
+
+        // 让 Restart / RetrySamePuzzle 在恢复后仍可用：重开需要「配置 + 初始素材」。
+        lastRequest = saved.config
+        lastGame = saved.config to GameSeed(
+            size = saved.board.size,
+            values = saved.board.values,
+            solution = saved.board.solution,
+            givens = saved.board.givens,
+        )
+        _uiState.update {
+            it.copy(
+                config = saved.config,
+                board = saved.board,
+                selection = saved.selection,
+                progress = saved.progress.copy(isBusy = false),
+                // 撤销历史不落盘（体积太大）：恢复后从空栈开始。
+                history = emptyList(),
+            )
         }
     }
 
@@ -269,12 +301,6 @@ class GameViewModel(
                 else "⚠️ ${wrong.size} cell(s) don't match the solution"
             )
         )
-    }
-
-    /** 自动求解（演示）：铺满终盘后走完成流程。 */
-    private fun solve() {
-        _uiState.update { GameReducer.finish(GameReducer.revealSolution(it), GameOutcome.REVEALED) }
-        _effect.trySend(GameEffect.SolutionRevealed(_uiState.value.progress.gameInstance))
     }
 
     private fun finishAsSuccess() {

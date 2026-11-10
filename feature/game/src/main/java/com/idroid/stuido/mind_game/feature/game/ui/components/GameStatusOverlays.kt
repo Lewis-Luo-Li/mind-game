@@ -64,12 +64,10 @@ fun FinishPanel(
     val title = when (outcome) {
         GameOutcome.SOLVED -> stringResource(R.string.finish_victory)
         GameOutcome.FAILED -> stringResource(R.string.finish_out_of_lives)
-        GameOutcome.REVEALED -> stringResource(R.string.finish_revealed)
     }
     val subtitle = when (outcome) {
         GameOutcome.SOLVED -> null
         GameOutcome.FAILED -> stringResource(R.string.finish_out_of_lives_body, maxMistakes)
-        GameOutcome.REVEALED -> stringResource(R.string.finish_revealed_body)
     }
     val minutes = timerSeconds / 60
     val seconds = timerSeconds % 60

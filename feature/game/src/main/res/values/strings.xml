@@ -4,8 +4,6 @@
     <string name="action_resume">Resume</string>
     <string name="action_new_game">New game</string>
     <string name="action_retry_same">Retry same puzzle</string>
-    <string name="action_reveal">Reveal</string>
-    <string name="action_cancel">Cancel</string>
 
     <!-- ===== GameScreen（未开局 / 生成中） ===== -->
     <string name="game_idle_welcome">Welcome to Sudoku. Choose a mode and a board size above to begin.</string>
@@ -31,7 +29,6 @@
     <string name="tool_erase">Erase</string>
     <string name="tool_hint">Hint</string>
     <string name="tool_badge_on">On</string>
-    <string name="tool_solve">Solve</string>
     <string name="hint_filled">Hint: placed %1$d</string>
 
     <!-- ===== 激励广告奖励 ===== -->
@@ -44,9 +41,5 @@
     <string name="finish_victory">🎉 Solved!</string>
     <string name="finish_out_of_lives">Out of lives</string>
     <string name="finish_out_of_lives_body">You used all %1$d lives.</string>
-    <string name="finish_revealed">Solution revealed</string>
-    <string name="finish_revealed_body">Revealed games don\'t count as solved.</string>
     <string name="finish_meta">Time %1$02d:%2$02d · Mistakes %3$d/%4$d · Hints %5$d/%6$d</string>
-    <string name="solve_dialog_title">Reveal the solution?</string>
-    <string name="solve_dialog_body">This ends the game.</string>
 </resources>

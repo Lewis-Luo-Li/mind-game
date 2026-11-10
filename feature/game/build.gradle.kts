@@ -3,6 +3,8 @@ import com.android.build.api.dsl.LibraryExtension
 plugins {
     id("mindgame.android.library")
     id("mindgame.android.library.compose")
+    // 存档（SavedGame）序列化为 JSON，供宿主落盘与跨进程恢复。
+    alias(libs.plugins.kotlin.serialization)
 }
 
 extensions.configure<LibraryExtension> {
@@ -25,6 +27,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.serialization.json)
 
     // Test
     testImplementation(libs.junit)
