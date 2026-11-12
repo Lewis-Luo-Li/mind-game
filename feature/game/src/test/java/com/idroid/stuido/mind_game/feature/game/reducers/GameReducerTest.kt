@@ -200,6 +200,36 @@ class GameReducerTest {
     }
 
     @Test
+    fun `toggleNote 多个候选共存而非互相替换`() {
+        // 4x4 规格：合法候选只有 1..4。
+        var s = startedState()
+        s = GameReducer.toggleNote(s, 12, 2)
+        s = GameReducer.toggleNote(s, 12, 3)
+        s = GameReducer.toggleNote(s, 12, 4)
+        // 后点的数字必须「追加」，不能顶掉之前点的：否则候选集永远只有 1 个，笔记失去意义。
+        assertEquals(setOf(2, 3, 4), s.board.notes[12])
+    }
+
+    @Test
+    fun `toggleNote 移除其中一个不影响其余候选`() {
+        var s = startedState()
+        s = GameReducer.toggleNote(s, 12, 2)
+        s = GameReducer.toggleNote(s, 12, 3)
+        s = GameReducer.toggleNote(s, 12, 4)
+        s = GameReducer.toggleNote(s, 12, 3)
+        assertEquals(setOf(2, 4), s.board.notes[12])
+    }
+
+    @Test
+    fun `toggleNote 只作用于当前格不影响其他格`() {
+        var s = startedState()
+        s = GameReducer.toggleNote(s, 12, 2)
+        s = GameReducer.toggleNote(s, 13, 3)
+        assertEquals(setOf(2), s.board.notes[12])
+        assertEquals(setOf(3), s.board.notes[13])
+    }
+
+    @Test
     fun `toggleNote 拒绝对给定格或已填数字格`() {
         val s = startedState()
         assertTrue(GameReducer.toggleNote(s, 0, 2).board.notes.getOrDefault(0, emptySet()).isEmpty())
@@ -287,24 +317,6 @@ class GameReducerTest {
         assertEquals(GameStatus.FINISHED, s.progress.status)
         assertEquals(3, s.progress.mistakes)
         assertEquals(GameOutcome.FAILED, s.progress.outcome)
-    }
-
-    @Test
-    fun `revealSolution 铺满终盘并清空笔记与选中与高亮`() {
-        var s = startedState()
-        s = GameReducer.toggleNote(s, 12, 2)
-        s = GameReducer.setConflicts(s, setOf(0))
-        val solved = GameReducer.revealSolution(s)
-        assertEquals(solution, solved.board.values)
-        assertTrue(solved.board.notes.isEmpty())
-        assertTrue(solved.selection.conflicts.isEmpty())
-        assertNull(solved.selection.index)
-    }
-
-    @Test
-    fun `revealSolution 保持给定集合`() {
-        val s = startedState()
-        assertEquals(s.board.givens, GameReducer.revealSolution(s).board.givens)
     }
 
     // 撤销

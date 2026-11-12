@@ -84,6 +84,18 @@ class GameViewModelTest {
         assertEquals(GameStatus.RUNNING, vm.uiState.value.progress.status)
     }
 
+    /**
+     * 把对局推进到终局：填满所有空格至终盘值 → SOLVED。
+     * 原先用 debug 求解入口（GameEvent.RequestSolve）制造终局态，该入口已移除。
+     */
+    private fun finishBySolving(vm: GameViewModel) {
+        val board = vm.uiState.value.board
+        board.values.indices.filter { it !in board.givens }.forEach { index ->
+            vm.dispatch(GameEvent.InputNumber(index, board.solution[index]))
+        }
+        assertEquals(GameStatus.FINISHED, vm.uiState.value.progress.status)
+    }
+
     @Test
     fun `filling every empty cell solves the puzzle and emits completion`() = runGameTest {
         val vm = newViewModel()
@@ -282,22 +294,6 @@ class GameViewModelTest {
         }
 
     @Test
-    fun `request solve reveals the solution without completion effect`() = runGameTest {
-        val vm = newViewModel()
-        val effects = mutableListOf<GameEffect>()
-        collectEffects(vm, effects)
-        startGame(vm)
-
-        vm.dispatch(GameEvent.RequestSolve)
-
-        assertEquals(GameStatus.FINISHED, vm.uiState.value.progress.status)
-        assertEquals(GameOutcome.REVEALED, vm.uiState.value.progress.outcome)
-        assertEquals(vm.uiState.value.board.solution, vm.uiState.value.board.values)
-        assertTrue(effects.any { it is GameEffect.SolutionRevealed })
-        assertFalse(effects.any { it is GameEffect.PuzzleCompleted })
-    }
-
-    @Test
     fun `restart retains lives and hint budgets from the last request`() = runGameTest {
         val vm = newViewModel()
         startGame(vm, maxMistakes = 5, maxHints = 4)
@@ -309,11 +305,104 @@ class GameViewModelTest {
         assertEquals(4, vm.uiState.value.config.maxHints)
     }
 
+    // ---------------- 存档恢复 ----------------
+
+    @Test
+    fun `restore game lays the saved board without generating a new puzzle`() = runGameTest {
+        val vm = newViewModel()
+        val saved = savedState()
+
+        vm.dispatch(GameEvent.RestoreGame(saved))
+
+        // 不生成、不异步：状态立刻可用，盘面/笔记/计时/计数原样回来。
+        assertEquals(saved.board, vm.uiState.value.board)
+        assertEquals(GameStatus.RUNNING, vm.uiState.value.progress.status)
+        assertEquals(saved.progress, vm.uiState.value.progress)
+        assertEquals(187, vm.uiState.value.progress.timerSeconds)
+        // 撤销历史不落盘，恢复后从空栈开始。
+        assertFalse(vm.uiState.value.canUndo)
+    }
+
+    @Test
+    fun `restore game is ignored once a game already started`() = runGameTest {
+        // 屏幕旋转后 ViewModel 仍存活：重复派发存档不能覆盖玩家当前进度。
+        val vm = newViewModel()
+        startGame(vm)
+        val active = vm.uiState.value
+
+        vm.dispatch(GameEvent.RestoreGame(savedState()))
+
+        assertEquals(active, vm.uiState.value)
+    }
+
+    @Test
+    fun `restored game can still restart with its own config`() = runGameTest {
+        val vm = newViewModel()
+        vm.dispatch(GameEvent.RestoreGame(savedState()))
+
+        vm.dispatch(GameEvent.Restart)
+        runCurrent()
+
+        assertEquals(GameStatus.RUNNING, vm.uiState.value.progress.status)
+        assertEquals(BoardSpec.MINI, vm.uiState.value.config.spec)
+        // 重开是一局全新的对局：计时与错误数归零。
+        assertEquals(0, vm.uiState.value.progress.timerSeconds)
+        assertEquals(0, vm.uiState.value.progress.mistakes)
+    }
+
+    @Test
+    fun `restore ignores a save that is already finished`() = runGameTest {
+        val vm = newViewModel()
+        val finished = savedState().let {
+            it.copy(progress = it.progress.copy(status = GameStatus.FINISHED))
+        }
+
+        vm.dispatch(GameEvent.RestoreGame(finished))
+
+        // 状态保持初始 IDLE，屏幕会按「没有存档」走正常开局。
+        assertEquals(GameStatus.IDLE, vm.uiState.value.progress.status)
+    }
+
+    /** 一份 4x4 的进行中快照：0..11 给定，12 空且有笔记，已计时 187 秒。 */
+    private fun savedState(): GameUiState {
+        val solution = listOf(
+            1, 2, 3, 4,
+            3, 4, 1, 2,
+            2, 1, 4, 3,
+            4, 3, 2, 1,
+        )
+        val givens = (0..11).toSet()
+        return GameUiState(
+            config = GameConfig(
+                mode = GameMode.FREE,
+                spec = BoardSpec.MINI,
+                difficulty = Difficulty.EASY,
+                seed = 7L,
+                maxMistakes = 3,
+                maxHints = 2,
+            ),
+            board = BoardCells(
+                size = 4,
+                values = solution.mapIndexed { i, v -> if (i in givens) v else 0 },
+                givens = givens,
+                solution = solution,
+                notes = mapOf(12 to setOf(2, 4)),
+            ),
+            selection = Selection(index = 12, inputMode = InputMode.NOTE),
+            progress = GameProgress(
+                status = GameStatus.RUNNING,
+                mistakes = 1,
+                timerSeconds = 187,
+                hintsUsed = 1,
+            ),
+        )
+    }
+
     @Test
     fun `gameplay events are ignored after finish`() = runGameTest {
         val vm = newViewModel()
         startGame(vm)
-        vm.dispatch(GameEvent.RequestSolve)
+        finishBySolving(vm)
         val finished = vm.uiState.value
 
         vm.dispatch(GameEvent.SelectCell(12))
@@ -327,8 +416,6 @@ class GameViewModelTest {
         vm.dispatch(GameEvent.RequestHint)
         assertEquals(finished, vm.uiState.value)
         vm.dispatch(GameEvent.RequestCheck)
-        assertEquals(finished, vm.uiState.value)
-        vm.dispatch(GameEvent.RequestSolve)
         assertEquals(finished, vm.uiState.value)
     }
 
@@ -346,7 +433,7 @@ class GameViewModelTest {
         assertEquals(0, vm.uiState.value.board.values[index])
         assertFalse(vm.uiState.value.canUndo)
 
-        vm.dispatch(GameEvent.RequestSolve)
+        finishBySolving(vm)
         val finished = vm.uiState.value
         vm.dispatch(GameEvent.Undo)
         assertEquals(finished, vm.uiState.value)

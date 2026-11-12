@@ -33,6 +33,15 @@ sealed interface GameEvent {
     /** 重新开始当前对局（同参数再开一局）。 */
     data object Restart : GameEvent
 
+    /**
+     * 恢复上次未完成的对局（[state] 为已校验的存档快照，替代 [NewGame] 开局）。
+     *
+     * 仅当本 ViewModel 尚未开局（[GameStatus.IDLE]）时生效：屏幕旋转后 ViewModel
+     * 仍然存活、状态已是 RUNNING/PAUSED，此时重复派发必须被忽略，
+     * 否则会把玩家正在下的棋用几秒前的存档覆盖掉。
+     */
+    data class RestoreGame(val state: GameUiState) : GameEvent
+
     /** Replay the current puzzle from scratch. */
     data object RetrySamePuzzle : GameEvent
 
@@ -83,9 +92,6 @@ sealed interface GameEvent {
 
     /** 请求核对当前已填数值是否与终盘一致（同步提示冲突）。 */
     data object RequestCheck : GameEvent
-
-    /** Reveal the solution and end the game without counting it as solved. */
-    data object RequestSolve : GameEvent
 
     // ---------- 计时 / 暂停 ----------
 

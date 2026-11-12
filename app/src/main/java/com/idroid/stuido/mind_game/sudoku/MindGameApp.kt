@@ -17,7 +17,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import com.idroid.stuido.mind_game.BuildConfig
 import com.idroid.stuido.mind_game.ads.AdMobInterstitialController
 import com.idroid.stuido.mind_game.ads.AdMobRewardedAdController
 import com.idroid.stuido.mind_game.ads.adMobBannerSlot
@@ -30,6 +29,8 @@ import com.idroid.stuido.mind_game.feature.game.ads.FakeRewardedAdController
 import com.idroid.stuido.mind_game.feature.game.ads.InterstitialController
 import com.idroid.stuido.mind_game.feature.game.ads.InterstitialFrequencyGate
 import com.idroid.stuido.mind_game.feature.game.ui.GameScreenRoute
+import com.idroid.stuido.mind_game.feature.game.persistence.toRestore
+import com.idroid.stuido.mind_game.feature.game.persistence.toSavedGame
 import com.idroid.stuido.mind_game.main.model.GameId
 import com.idroid.stuido.mind_game.main.model.gameCatalog
 import com.idroid.stuido.mind_game.main.page.MainScreen
@@ -95,13 +96,41 @@ fun MindGameApp(themePrefs: ThemePrefs) {
     val interstitialGate = remember { InterstitialFrequencyGate() }
 
     val progressStore = remember { PlayerProgressStore(context) }
-    var playRequest by remember { mutableStateOf<PlayRequest?>(null) }
+    val savedGameStore = remember { SavedGameStore(context) }
+
+    // 冷启动可恢复的存档：跨期每日挑战 / 版本不符 / 已结束的局都会被判废并清除。
+    val resumableGame = remember {
+        val todayDailyDay = DailySchedule.from(gameConfig.sudoku.daily).puzzleDay(Instant.now())
+        savedGameStore.loadResumable(todayDailyDay)
+    }
+
+    // 当前对局以「编码后的 PlayRequest」存放在 rememberSaveable 中：
+    //  - 旋转 / 进程重建后仍是同一局（id 不变 → sessionKey 不变 → ViewModel 复用）；
+    //  - 冷启动时由存档还原，于是「上次没打完」会自动续上；
+    //  - 退出到主菜单置空，此时即使存档还在也不会擅自进入对局。
+    var encodedPlayRequest by rememberSaveable {
+        val resume = resumableGame?.toResumePlayRequest()
+        // 恢复的 id 来自上一个进程的计数器，必须先占位，否则新局的 id 会撞上它，
+        // 让 viewModel(key) 复用那个还在进行中的旧 VM（玩家点了新局却回到旧局）。
+        resume?.let { reserveSessionId(it.id) }
+        mutableStateOf(resume?.encode().orEmpty())
+    }
+    val playRequest = remember(encodedPlayRequest) { decodePlayRequest(encodedPlayRequest) }
+
+    fun startPlay(request: PlayRequest) { encodedPlayRequest = request.encode() }
+
+    // 自动续局：从存档进来时把 Sudoku 详情页垫在下面，退出对局回到它而不是游戏列表。
     var backStack by rememberSaveable(
         stateSaver = listSaver(
             save = { stack -> stack.map { it.encode() } },
             restore = { encoded -> encoded.map(::decodeDest) },
         ),
-    ) { mutableStateOf(listOf<Dest>(Dest.Games)) }
+    ) {
+        mutableStateOf(
+            if (resumableGame != null) listOf(Dest.Games, Dest.GameDetail(GameId.SUDOKU))
+            else listOf<Dest>(Dest.Games),
+        )
+    }
 
     fun navigate(to: Dest) { backStack = backStack + to }
     fun pop() { backStack = backStack.dropLast(1) }
@@ -110,8 +139,13 @@ fun MindGameApp(themePrefs: ThemePrefs) {
     // 它自带 Scaffold（顶栏/数字键盘），需要满铺到系统栏，故不套 inset 容器。
     val req = playRequest
     if (req != null) {
+        // 仅当存档确实属于本局时才铺状态；新开的一局没有匹配的存档（id 不同）。
+        // 只在 id 变化时重算，避免每次重组都反序列化一遍盘面。
+        val restoreState = remember(req.id, resumableGame) {
+            resumableGame?.takeIf { it.requestId == req.id }?.toRestore()
+        }
         GameScreenRoute(
-            onExit = { playRequest = null },
+            onExit = { encodedPlayRequest = "" },
             onOpenSettings = { navigate(Dest.Settings) },
             mode = req.mode,
             spec = req.spec,
@@ -126,20 +160,27 @@ fun MindGameApp(themePrefs: ThemePrefs) {
             onGameFinished = { outcome, firstFinish ->
                 // 一局只计一次（复活后的二次终局不再计入局数）。
                 if (firstFinish) interstitialGate.recordGameFinished()
-                // FAILED 由激励广告复活承接，不播插页；SOLVED/REVEALED 满足
-                // ads.interstitial 的局数/秒数下限才播，SDK 确认弹出后才 recordShown。
-                if (outcome != GameOutcome.FAILED &&
+                // FAILED 由激励广告复活承接，不播插页；仅解出（SOLVED）在满足
+                // ads.interstitial 的局数/秒数下限时才播，SDK 确认弹出后才 recordShown。
+                if (outcome == GameOutcome.SOLVED &&
                     interstitialGate.shouldShow(gameConfig.ads.interstitial, adsEnabled)
                 ) {
                     interstitialAds.maybeShow(context) { interstitialGate.recordShown() }
                 }
             },
-            showDebugSolve = BuildConfig.DEBUG,
             sessionKey = "sudoku-game-${req.id}",
             level = req.level,
-            onOutcome = { outcome -> progressStore.record(req, outcome) },
+            onOutcome = { outcome ->
+                progressStore.record(req, outcome)
+                // 终局立刻清档：结算面板停留期间进程被杀，也不会把已结束的局当成可续档。
+                savedGameStore.clear()
+            },
+            restore = restoreState,
+            onPersist = { state ->
+                savedGameStore.save(state.toSavedGame(req.id, req.puzzleDay?.toString()))
+            },
             onNextLevel = req.level?.let { level ->
-                { playRequest = ladderPlayRequest(nextSessionId(), gameConfig, level + 1) }
+                { startPlay(ladderPlayRequest(nextSessionId(), gameConfig, level + 1)) }
             },
             nextDailyAt = req.puzzleDay?.let { day ->
                 DailySchedule.from(gameConfig.sudoku.daily).windowStart(day.plusDays(1))
@@ -188,10 +229,10 @@ fun MindGameApp(themePrefs: ThemePrefs) {
                 onBack = ::pop,
                 onOpenSettings = { navigate(Dest.Settings) },
                 onPlayDaily = {
-                    playRequest = dailyPlayRequest(nextSessionId(), gameConfig, Instant.now())
+                    startPlay(dailyPlayRequest(nextSessionId(), gameConfig, Instant.now()))
                 },
                 onPlayLevel = { level ->
-                    playRequest = ladderPlayRequest(nextSessionId(), gameConfig, level)
+                    startPlay(ladderPlayRequest(nextSessionId(), gameConfig, level))
                 },
             )
         }
@@ -231,3 +272,8 @@ private fun GameHost(
 private var sessionCounter = 0L
 
 private fun nextSessionId(): Long = ++sessionCounter
+
+/** 让后续新局的 id 跳过 [id]，避免与恢复出的对局撞同一个 ViewModel key。 */
+private fun reserveSessionId(id: Long) {
+    if (id > sessionCounter) sessionCounter = id
+}

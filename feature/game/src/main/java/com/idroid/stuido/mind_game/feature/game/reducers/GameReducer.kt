@@ -140,15 +140,6 @@ object GameReducer {
         )
     }
 
-    /** 单步/自动求解：全盘铺满终盘、清笔记，并将选中态归零。 */
-    fun revealSolution(state: GameUiState): GameUiState {
-        val board = state.board
-        return state.copy(
-            board = board.copy(values = board.solution.toList(), notes = emptyMap()),
-            selection = Selection(),
-        )
-    }
-
     fun toggleNoteMode(state: GameUiState): GameUiState {
         val next = if (state.selection.inputMode == InputMode.NUMBER) InputMode.NOTE else InputMode.NUMBER
         return state.copy(selection = state.selection.copy(inputMode = next))

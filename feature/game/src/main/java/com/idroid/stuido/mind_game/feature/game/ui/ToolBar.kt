@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,7 +22,7 @@ import com.idroid.stuido.mind_game.feature.game.R
 /**
  * 底部第二节：快捷工具行（Undo / Notes / Erase / Hint），对齐 docs/sudoku_ui.jpeg。
  * 圆形图标钮 + 文字标签，均匀排开；Check 已移除、Pause 改为点击计时器（D4）。
- * Solve 仅在 debug（showDebugSolve）显示。一律以回调上抛，由宿主派发 MVI 事件。
+ * 一律以回调上抛，由宿主派发 MVI 事件。
  */
 @Composable
 fun GameToolBar(
@@ -34,12 +32,10 @@ fun GameToolBar(
     hintBadge: String,
     hintEnabled: Boolean,
     hintContentDescription: String,
-    showDebugSolve: Boolean,
     onUndo: () -> Unit,
     onNoteMode: () -> Unit,
     onErase: () -> Unit,
     onHint: () -> Unit,
-    onSolve: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -110,11 +106,6 @@ fun GameToolBar(
                 uiConfig = LabeledCircleButtonConfig(enabled = hintEnabled),
                 uiStyle = buttonStyle,
             )
-            if (showDebugSolve) {
-                TextButton(onClick = onSolve) {
-                    Text(stringResource(R.string.tool_solve))
-                }
-            }
         }
     }
 }
